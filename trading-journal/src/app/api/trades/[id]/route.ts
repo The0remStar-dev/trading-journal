@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serializeTrade } from "@/lib/serialize";
 import { calculatePnl, calculatePnlPercentage, deriveStatus } from "@/lib/calculations";
+import { createClient } from "@/lib/supabase/server";
 import type { TradeInput } from "@/types/trade";
 
 interface Params {
@@ -10,15 +11,46 @@ interface Params {
 
 // GET /api/trades/:id
 export async function GET(_request: NextRequest, { params }: Params) {
-  const trade = await prisma.trade.findUnique({ where: { id: params.id } });
-  if (!trade) return NextResponse.json({ error: "Trade not found." }, { status: 404 });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  }
+
+  const trade = await prisma.trade.findFirst({
+    where: {
+      id: params.id,
+      userId: user.id,
+    },
+  });
+
+  if (!trade) {
+    return NextResponse.json({ error: "Trade not found." }, { status: 404 });
+  }
+
   return NextResponse.json({ trade: serializeTrade(trade) });
 }
 
 // PUT /api/trades/:id — full update, recomputing PnL / status
 export async function PUT(request: NextRequest, { params }: Params) {
-  const existing = await prisma.trade.findUnique({ where: { id: params.id } });
-  if (!existing) return NextResponse.json({ error: "Trade not found." }, { status: 404 });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  }
+
+  const existing = await prisma.trade.findFirst({
+    where: {
+      id: params.id,
+      userId: user.id,
+    },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ error: "Trade not found." }, { status: 404 });
+  }
 
   const body = (await request.json()) as TradeInput;
 
@@ -29,6 +61,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     positionSize: body.positionSize,
     fees: body.fees ?? 0,
   });
+
   const pnlPercentage = calculatePnlPercentage({
     direction: body.direction,
     entryPrice: body.entryPrice,
@@ -36,6 +69,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     positionSize: body.positionSize,
     fees: body.fees ?? 0,
   });
+
   const status = deriveStatus({ exitPrice: body.exitPrice, pnl });
 
   const updated = await prisma.trade.update({
@@ -66,9 +100,25 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
 // DELETE /api/trades/:id
 export async function DELETE(_request: NextRequest, { params }: Params) {
-  const existing = await prisma.trade.findUnique({ where: { id: params.id } });
-  if (!existing) return NextResponse.json({ error: "Trade not found." }, { status: 404 });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  }
+
+  const existing = await prisma.trade.findFirst({
+    where: {
+      id: params.id,
+      userId: user.id,
+    },
+  });
+
+  if (!existing) {
+    return NextResponse.json({ error: "Trade not found." }, { status: 404 });
+  }
 
   await prisma.trade.delete({ where: { id: params.id } });
+
   return NextResponse.json({ success: true });
 }

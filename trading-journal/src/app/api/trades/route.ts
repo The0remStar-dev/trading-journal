@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 import { serializeTrade } from "@/lib/serialize";
 import { calculatePnl, calculatePnlPercentage, deriveStatus } from "@/lib/calculations";
 import type { TradeInput } from "@/types/trade";
@@ -7,9 +8,19 @@ import type { Prisma } from "@prisma/client";
 
 // GET /api/trades — list trades with optional filters
 export async function GET(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
 
-  const where: Prisma.TradeWhereInput = {};
+  // Filtrage obligatoire par l'utilisateur connecté
+  const where: Prisma.TradeWhereInput = {
+    userId: user.id,
+  };
 
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
@@ -40,7 +51,6 @@ export async function GET(request: NextRequest) {
 
   let serialized = trades.map(serializeTrade);
 
-  // Tag filtering happens in-memory since tags are stored as a JSON string column.
   const tagsParam = searchParams.get("tags");
   if (tagsParam) {
     const requestedTags = tagsParam.split(",").filter(Boolean);
@@ -52,6 +62,13 @@ export async function GET(request: NextRequest) {
 
 // POST /api/trades — create a new trade, auto-computing PnL / PnL% / status
 export async function POST(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  }
+
   const body = (await request.json()) as TradeInput;
 
   if (!body.symbol || !body.direction || !body.entryDate || body.entryPrice === undefined) {
@@ -65,6 +82,7 @@ export async function POST(request: NextRequest) {
     positionSize: body.positionSize,
     fees: body.fees ?? 0,
   });
+
   const pnlPercentage = calculatePnlPercentage({
     direction: body.direction,
     entryPrice: body.entryPrice,
@@ -72,10 +90,12 @@ export async function POST(request: NextRequest) {
     positionSize: body.positionSize,
     fees: body.fees ?? 0,
   });
+
   const status = deriveStatus({ exitPrice: body.exitPrice, pnl });
 
   const created = await prisma.trade.create({
     data: {
+      userId: user.id, // 👈 Rattachement du trade à l'utilisateur connecté
       accountType: body.accountType,
       symbol: body.symbol.toUpperCase(),
       direction: body.direction,

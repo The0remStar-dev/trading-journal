@@ -1,9 +1,15 @@
 {
   "devDependencies": {
-    "prisma": "^7.9.1"
+    "prisma": "^6.19.3"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.3",
     "autoprefixer": "^10.5.4",
     "postcss": "^8.5.26"
   }
 }
+
+
+

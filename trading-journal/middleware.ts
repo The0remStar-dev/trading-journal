@@ -1,54 +1,68 @@
-import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
-
-const SESSION_COOKIE = "tj_session";
-const PUBLIC_PATHS = ["/login", "/api/auth/login"];
-
-async function isValidToken(token: string | undefined): Promise<boolean> {
-  if (!token) return false;
-  try {
-    const secret = new TextEncoder().encode(process.env.JWT_SECRET);
-    await jwtVerify(token, secret);
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-  // Allow public paths and static assets through.
-  if (
-    PUBLIC_PATHS.includes(pathname) ||
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/favicon")
-  ) {
-    return NextResponse.next();
-  }
-
-  const token = request.cookies.get(SESSION_COOKIE)?.value;
-  const authed = await isValidToken(token);
-
-  if (!authed) {
-    // API routes get a 401 JSON response; pages get redirected to /login.
-    if (pathname.startsWith("/api")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
+      },
     }
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("from", pathname);
-    return NextResponse.redirect(loginUrl);
+  )
+
+  // Vérification sécurisée de l'utilisateur
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  const { pathname } = request.nextUrl
+
+  // Définition des routes publiques et assets statiques
+  const isPublicPath =
+    pathname === '/login' ||
+    pathname.startsWith('/auth/callback') ||
+    pathname.startsWith('/_next') ||
+    pathname.includes('favicon.ico')
+
+  // 1. Utilisateur NON connecté tentant d'accéder à une route privée
+  if (!user && !isPublicPath) {
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('from', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
-  return NextResponse.next();
+  // 2. Utilisateur DÉJÀ connecté tentant d'aller sur la page de connexion
+  if (user && pathname === '/login') {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  return response
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all paths except:
-     * - static files (_next/static, _next/image, favicon.ico)
-     */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-};
+}

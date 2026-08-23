@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/Navbar";
-import {KpiCards} from '../../components/dashboard/KpiCards'
-import {EquityCurveChart} from '../../components/dashboard/EquityCurveChart'
+import { KpiCards } from "@/components/dashboard/KpiCards";
+import { EquityCurveChart } from "@/components/dashboard/EquityCurveChart";
 import { DayOfWeekChart } from "@/components/dashboard/DayOfWeekChart";
 import { TagPerformance } from "@/components/dashboard/TagPerformance";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import {
   computeTagPerformance,
 } from "@/lib/calculations";
 import { cn } from "@/lib/utils";
-import { subDays, startOfWeek, startOfMonth, isAfter } from "date-fns";
+import { startOfWeek, startOfMonth, isAfter } from "date-fns";
+import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 type RangeKey = "week" | "month" | "all" | "custom";
 
@@ -26,8 +28,18 @@ const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
 ];
 
 export default function DashboardPage() {
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
   const { trades, loading, error } = useTrades();
   const [range, setRange] = useState<RangeKey>("all");
+
+  useEffect(() => {
+    async function getUser() {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    }
+    getUser();
+  }, [supabase]);
 
   const filteredTrades = useMemo(() => {
     if (range === "all") return trades;
@@ -48,7 +60,9 @@ export default function DashboardPage() {
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
-            <p className="text-sm text-muted">Performance overview across all your trades.</p>
+            <p className="text-sm text-muted">
+              {user ? `Connecté en tant que ${user.email}` : "Performance overview across all your trades."}
+            </p>
           </div>
           <div className="flex gap-1 rounded-md border border-border bg-surface p-1">
             {RANGE_OPTIONS.map((opt) => (

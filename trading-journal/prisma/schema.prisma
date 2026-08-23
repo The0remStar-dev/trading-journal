@@ -1,5 +1,3 @@
-// Trading Journal — Prisma schema (PostgreSQL)
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,7 +10,7 @@ datasource db {
 
 model Trade {
   id              String      @id @default(uuid())
-  userId          String      // ID unique généré par Supabase Auth
+  userId          String
   accountType     AccountType @default(LIVE)
   symbol          String
   direction       Direction
