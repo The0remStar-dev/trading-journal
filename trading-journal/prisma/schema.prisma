@@ -1,0 +1,65 @@
+// Trading Journal — Prisma schema (PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trade {
+  id             String      @id @default(uuid())
+
+  accountType    AccountType @default(LIVE)
+  symbol         String
+  direction      Direction
+
+  entryDate      DateTime
+  exitDate       DateTime?
+
+  entryPrice     Float
+  exitPrice      Float?
+  positionSize   Float
+  fees           Float       @default(0)
+
+  pnl            Float       @default(0)
+  pnlPercentage  Float       @default(0)
+  riskRewardRatio Float?
+
+  status         TradeStatus @default(OPEN)
+
+  tags           String      @default("[]")
+
+  notes          String?
+
+  beforeImageUrl String?
+  afterImageUrl  String?
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([entryDate])
+  @@index([symbol])
+  @@index([status])
+  @@index([accountType])
+}
+
+enum AccountType {
+  LIVE
+  BACKTEST
+  EVALUATION
+}
+
+enum Direction {
+  LONG
+  SHORT
+}
+
+enum TradeStatus {
+  WIN
+  LOSS
+  BREAKEVEN
+  OPEN
+}
