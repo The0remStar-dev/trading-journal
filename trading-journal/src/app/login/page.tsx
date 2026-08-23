@@ -2,39 +2,39 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Lock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
 
-export default function LoginPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+function LoginForm() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password }),
-    });
+    })
 
     if (res.ok) {
-      const dest = searchParams.get("from") || "/dashboard";
-      router.push(dest);
-      router.refresh();
+      const dest = searchParams.get('from') || '/dashboard'
+      router.push(dest)
+      router.refresh()
     } else {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Incorrect password.");
-      setLoading(false);
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Incorrect password.')
+      setLoading(false)
     }
   }
 
@@ -64,10 +64,18 @@ export default function LoginPage() {
           />
           {error && <p className="text-xs text-loss">{error}</p>}
           <Button type="submit" disabled={loading || !password} className="w-full">
-            {loading ? "Verifying..." : "Unlock Journal"}
+            {loading ? 'Verifying...' : 'Unlock Journal'}
           </Button>
         </form>
       </Card>
     </div>
-  );
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
+  )
 }
