@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
-import { KpiCards } from "@/components/dashboard/KpiCards";
-import { EquityCurveChart } from "@/components/dashboard/EquityCurveChart";
+import {KpiCards} from '../../components/dashboard/KpiCards'
+import {EquityCurveChart} from '../../components/dashboard/EquityCurveChart'
 import { DayOfWeekChart } from "@/components/dashboard/DayOfWeekChart";
 import { TagPerformance } from "@/components/dashboard/TagPerformance";
 import { Button } from "@/components/ui/button";
