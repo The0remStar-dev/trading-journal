@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { KpiCards } from "@/components/dashboard/KpiCards";
 import { EquityCurveChart } from "@/components/dashboard/EquityCurveChart";
@@ -28,18 +29,25 @@ const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const { trades, loading, error } = useTrades();
   const [range, setRange] = useState<RangeKey>("all");
 
   useEffect(() => {
     async function getUser() {
       const { data } = await supabase.auth.getUser();
-      setUser(data.user);
+      if (!data.user) {
+        router.replace("/login");
+      } else {
+        setUser(data.user);
+        setCheckingAuth(false);
+      }
     }
     getUser();
-  }, [supabase]);
+  }, [supabase, router]);
 
   const filteredTrades = useMemo(() => {
     if (range === "all") return trades;
@@ -52,6 +60,15 @@ export default function DashboardPage() {
   const equityCurve = useMemo(() => computeEquityCurve(filteredTrades), [filteredTrades]);
   const dayOfWeek = useMemo(() => computeWinRateByDayOfWeek(filteredTrades), [filteredTrades]);
   const tagPerf = useMemo(() => computeTagPerformance(filteredTrades), [filteredTrades]);
+
+  // Si on est en train de vérifier l'authentification, on affiche un écran vide ou de chargement
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-sm text-muted">Chargement...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
