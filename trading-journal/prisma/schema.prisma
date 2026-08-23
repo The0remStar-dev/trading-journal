@@ -5,40 +5,32 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Trade {
-  id             String      @id @default(uuid())
-
-  accountType    AccountType @default(LIVE)
-  symbol         String
-  direction      Direction
-
-  entryDate      DateTime
-  exitDate       DateTime?
-
-  entryPrice     Float
-  exitPrice      Float?
-  positionSize   Float
-  fees           Float       @default(0)
-
-  pnl            Float       @default(0)
-  pnlPercentage  Float       @default(0)
+  id              String      @id @default(uuid())
+  accountType     AccountType @default(LIVE)
+  symbol          String
+  direction       Direction
+  entryDate       DateTime
+  exitDate        DateTime?
+  entryPrice      Float
+  exitPrice       Float?
+  positionSize    Float
+  fees            Float       @default(0)
+  pnl             Float       @default(0)
+  pnlPercentage   Float       @default(0)
   riskRewardRatio Float?
-
-  status         TradeStatus @default(OPEN)
-
-  tags           String      @default("[]")
-
-  notes          String?
-
-  beforeImageUrl String?
-  afterImageUrl  String?
-
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  status          TradeStatus @default(OPEN)
+  tags            String      @default("[]")
+  notes           String?
+  beforeImageUrl  String?
+  afterImageUrl   String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   @@index([entryDate])
   @@index([symbol])
