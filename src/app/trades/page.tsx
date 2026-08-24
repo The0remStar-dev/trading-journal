@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { TradeTable } from "@/components/trades/TradeTable";
@@ -29,6 +29,10 @@ export default function TradesPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<Trade | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Nouveaux états pour la fonctionnalité "Delete All"
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   function openNewTradeForm() {
     setEditingTrade(null);
@@ -64,6 +68,26 @@ export default function TradesPage() {
     }
   }
 
+  // Fonction pour tout supprimer
+  async function confirmDeleteAll() {
+    setDeletingAll(true);
+    try {
+      const res = await fetch("/api/trades/delete-all", {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Erreur lors de la suppression globale.");
+      }
+      setDeleteAllOpen(false);
+      window.location.reload();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setDeletingAll(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -73,7 +97,17 @@ export default function TradesPage() {
             <h1 className="text-xl font-semibold text-foreground">Trade Log</h1>
             <p className="text-sm text-muted">Every trade, filterable and sortable.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {trades.length > 0 && (
+              <Button
+                variant="outline"
+                className="border-loss/40 text-loss hover:bg-loss-dim"
+                onClick={() => setDeleteAllOpen(true)}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete All
+              </Button>
+            )}
             <ImportTradesModal onSuccess={() => window.location.reload()} />
             <Button onClick={openNewTradeForm}>
               <Plus className="h-4 w-4" />
@@ -109,6 +143,7 @@ export default function TradesPage() {
 
       <TradeDetailModal trade={detailTrade} open={detailOpen} onOpenChange={setDetailOpen} />
 
+      {/* Modale de suppression d'un seul trade */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent size="md">
           <DialogHeader>
@@ -123,6 +158,26 @@ export default function TradesPage() {
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
               {deleting ? "Deleting..." : "Delete Trade"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modale de confirmation pour "Delete All" */}
+      <Dialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle className="text-loss">⚠️ Delete ALL trades?</DialogTitle>
+            <DialogDescription>
+              You are about to permanently delete your entire trade history ({trades.length} trade{trades.length > 1 ? "s" : ""}). This action is strictly irreversible.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setDeleteAllOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteAll} disabled={deletingAll}>
+              {deletingAll ? "Deleting everything..." : "Yes, Delete All"}
             </Button>
           </div>
         </DialogContent>

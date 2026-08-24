@@ -6,11 +6,12 @@ import { createClient } from "@/lib/supabase/server";
 import type { TradeInput } from "@/types/trade";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/trades/:id
 export async function GET(_request: NextRequest, { params }: Params) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -20,7 +21,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
   const trade = await prisma.trade.findFirst({
     where: {
-      id: params.id,
+      id,
       userId: user.id,
     },
   });
@@ -34,6 +35,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
 // PUT /api/trades/:id — full update, recomputing PnL / status
 export async function PUT(request: NextRequest, { params }: Params) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -43,7 +45,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
   const existing = await prisma.trade.findFirst({
     where: {
-      id: params.id,
+      id,
       userId: user.id,
     },
   });
@@ -73,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const status = deriveStatus({ exitPrice: body.exitPrice, pnl });
 
   const updated = await prisma.trade.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       accountType: body.accountType,
       symbol: body.symbol.toUpperCase(),
@@ -100,6 +102,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
 // DELETE /api/trades/:id
 export async function DELETE(_request: NextRequest, { params }: Params) {
+  const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -109,7 +112,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   const existing = await prisma.trade.findFirst({
     where: {
-      id: params.id,
+      id,
       userId: user.id,
     },
   });
@@ -118,7 +121,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Trade not found." }, { status: 404 });
   }
 
-  await prisma.trade.delete({ where: { id: params.id } });
+  await prisma.trade.delete({ where: { id } });
 
   return NextResponse.json({ success: true });
 }
