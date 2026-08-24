@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { TradeTable } from "@/components/trades/TradeTable";
 import { TradeFormModal } from "@/components/trades/TradeFormModal";
 import { TradeDetailModal } from "@/components/trades/TradeDetailModal";
+import { ImportTradesModal } from "@/components/trades/ImportTradesModal";
 import {
   Dialog,
   DialogContent,
@@ -72,10 +73,13 @@ export default function TradesPage() {
             <h1 className="text-xl font-semibold text-foreground">Trade Log</h1>
             <p className="text-sm text-muted">Every trade, filterable and sortable.</p>
           </div>
-          <Button onClick={openNewTradeForm}>
-            <Plus className="h-4 w-4" />
-            Log Trade
-          </Button>
+          <div className="flex items-center gap-2">
+            <ImportTradesModal onSuccess={() => window.location.reload()} />
+            <Button onClick={openNewTradeForm}>
+              <Plus className="h-4 w-4" />
+              Log Trade
+            </Button>
+          </div>
         </div>
 
         {error && (
