@@ -28,7 +28,13 @@ export function ImportTradesModal({ onSuccess }: ImportTradesModalProps) {
         body: formData,
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(text || "Erreur serveur (réponse vide ou invalide).");
+      }
 
       if (!res.ok) {
         throw new Error(data.error || "Une erreur est survenue.");
