@@ -347,7 +347,7 @@ function normalizeRow(row: unknown[], columnMap: ColumnMap, brokerFormat: Broker
 export async function POST(request: NextRequest) {
   try {
     // 1. Authentification via Supabase
-    const supabase = createClient();
+    const supabase = await createClient();
     const {
       data: { user },
       error: authError,
