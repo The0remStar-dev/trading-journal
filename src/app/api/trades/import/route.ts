@@ -5,13 +5,12 @@ import JSZip from "jszip";
 import { prisma } from "@/lib/prisma";
 // ⚠️ Adaptez ce chemin si votre client Supabase serveur est exporté ailleurs.
 import { createClient } from "@/lib/supabase/server";
+import { detectBrokerProfile, type BrokerProfile } from "@/lib/import/brokerProfiles";
 
 export const runtime = "nodejs"; // nécessaire pour Buffer / JSZip / xlsx
 
 // --- Configuration du mapping de colonnes -----------------------------------
 
-// Mots-clés utilisés pour détecter automatiquement la ligne d'en-tête,
-// quelle que soit la position réelle des données dans le fichier.
 const HEADER_KEYWORDS = [
   "instrument",
   "symbol",
@@ -28,8 +27,6 @@ const HEADER_KEYWORDS = [
   "p/l",
 ];
 
-// Alias acceptés pour chaque colonne, en anglais et en français
-// (couvre notamment les exports XTB / MT4 / MT5 courants en Europe).
 const COLUMN_ALIASES: Record<string, string[]> = {
   symbol: ["instrument", "symbol", "symbole", "ticker"],
   direction: ["type", "side", "sens", "direction"],
@@ -59,18 +56,6 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   comment: ["comment", "commentaire"],
 };
 
-// Colonnes distinctives des exports xStation5 (XTB), utilisées pour la
-// détection automatique du courtier — elles sont rarement présentes ensemble
-// dans un export générique (S/L, T/P, Taxes).
-const XTB_SIGNATURE_KEYWORDS = ["s/l", "t/p", "taxes"];
-
-// Sur les exports XTB, le volume est enregistré avec un décalage décimal
-// (ex: 0.002 dans le fichier = 0.2 lot réel, 0.001 = 0.1 lot réel).
-// Facteur de correction constaté et validé : ×100.
-const XTB_LOT_SIZE_MULTIPLIER = 100;
-
-type BrokerFormat = "XTB" | "GENERIC";
-
 interface ColumnMap {
   symbol?: number;
   direction?: number;
@@ -84,16 +69,17 @@ interface ColumnMap {
   comment?: number;
 }
 
+/** Raisons possibles de la détermination du volume, exposées pour audit/preview. */
+type PositionSizeSource = "derived_from_pnl" | "broker_profile" | "raw" | "fallback_default";
+
 // --- Utilitaires de parsing --------------------------------------------------
 
-/** Détecte le séparateur CSV (virgule ou point-virgule) via la première ligne. */
 function detectDelimiter(firstLine: string): string {
   const commaCount = (firstLine.match(/,/g) || []).length;
   const semicolonCount = (firstLine.match(/;/g) || []).length;
   return semicolonCount > commaCount ? ";" : ",";
 }
 
-/** Parseur CSV minimaliste, gère les champs entourés de guillemets. */
 function parseCsv(text: string, delimiter: string): string[][] {
   const rows: string[][] = [];
   const lines = text.split(/\r\n|\n|\r/).filter((l) => l.trim() !== "");
@@ -126,8 +112,6 @@ function extractRowsFromCsv(text: string): unknown[][] {
 }
 
 function extractRowsFromExcel(buffer: Buffer): unknown[][] {
-  // cellDates: true permet à xlsx de convertir les cellules formatées "date"
-  // directement en objets Date JS plutôt qu'en numéros de série Excel.
   const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
   const firstSheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[firstSheetName];
@@ -137,8 +121,6 @@ function extractRowsFromExcel(buffer: Buffer): unknown[][] {
 async function extractRowsFromZip(buffer: Buffer): Promise<unknown[][]> {
   const zip = await JSZip.loadAsync(buffer);
 
-  // On cherche le premier fichier de trading valide, en ignorant
-  // les dossiers système macOS (__MACOSX/) et les fichiers cachés (._*).
   const candidate = Object.values(zip.files).find((entry) => {
     if (entry.dir) return false;
     const name = entry.name;
@@ -159,7 +141,6 @@ async function extractRowsFromZip(buffer: Buffer): Promise<unknown[][]> {
   return extractRowsFromExcel(fileBuffer);
 }
 
-/** Convertit un numéro de série Excel en date JS. */
 function excelSerialToDate(serial: number): Date {
   const utcDays = Math.floor(serial - 25569);
   const utcValue = utcDays * 86400;
@@ -173,7 +154,6 @@ function excelSerialToDate(serial: number): Date {
   return new Date(dateInfo.getFullYear(), dateInfo.getMonth(), dateInfo.getDate(), hours, minutes, seconds);
 }
 
-/** Parse une date quel que soit son format d'origine (Excel, MT4/XTB, ISO, EU...). */
 function parseFlexibleDate(value: unknown): Date | null {
   if (value === null || value === undefined || value === "") return null;
   if (value instanceof Date && !isNaN(value.getTime())) return value;
@@ -181,14 +161,12 @@ function parseFlexibleDate(value: unknown): Date | null {
 
   const str = String(value).trim();
 
-  // Format MT4 / XTB : "2024.01.15 10:23:00"
   const mt4Match = str.match(/^(\d{4})\.(\d{2})\.(\d{2})[ T](\d{2}):(\d{2})(:(\d{2}))?/);
   if (mt4Match) {
     const [, y, mo, d, h, mi, , s] = mt4Match;
     return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s || 0));
   }
 
-  // Format européen : "15/01/2024 10:23:00"
   const euMatch = str.match(/^(\d{2})\/(\d{2})\/(\d{4})[ T]?(\d{2})?:?(\d{2})?:?(\d{2})?/);
   if (euMatch) {
     const [, d, mo, y, h, mi, s] = euMatch;
@@ -199,7 +177,6 @@ function parseFlexibleDate(value: unknown): Date | null {
   return isNaN(native.getTime()) ? null : native;
 }
 
-/** Parse un nombre en gérant les virgules décimales (formats européens). */
 function parseFlexibleNumber(value: unknown): number {
   if (value === null || value === undefined || value === "") return 0;
   if (typeof value === "number") return value;
@@ -211,37 +188,10 @@ function parseFlexibleNumber(value: unknown): number {
 function normalizeDirection(value: unknown): "LONG" | "SHORT" {
   const str = String(value ?? "").trim().toLowerCase();
   if (["sell", "short", "vente", "s", "1"].includes(str)) return "SHORT";
-  return "LONG"; // buy / long / achat / b / 0 par défaut
+  return "LONG";
 }
 
-/**
- * Détecte le courtier d'origine du fichier à partir de sa ligne d'en-tête,
- * afin d'appliquer les règles de normalisation spécifiques (ex: taille de lot XTB).
- */
-function detectBrokerFormat(headerCells: string[]): BrokerFormat {
-  const matchCount = XTB_SIGNATURE_KEYWORDS.filter((kw) =>
-    headerCells.some((c) => c === kw || c.includes(kw))
-  ).length;
-  return matchCount >= 2 ? "XTB" : "GENERIC";
-}
-
-/**
- * Normalise la taille de position selon le format du courtier détecté.
- * XTB : le volume exporté est décalé d'une puissance de 10
- * (0.002 dans le fichier = 0.2 lot réel, 0.001 = 0.1 lot réel) → correction ×100.
- * Autres formats : la valeur brute est déjà correcte, elle n'est pas altérée.
- */
-function normalizeLotSize(rawValue: number, brokerFormat: BrokerFormat): number {
-  if (brokerFormat === "XTB") {
-    return Number((rawValue * XTB_LOT_SIZE_MULTIPLIER).toFixed(4));
-  }
-  return rawValue;
-}
-
-/** Recherche la ligne d'en-tête parmi les 15 premières lignes du fichier. */
-function findHeaderRow(
-  rows: unknown[][]
-): { headerIndex: number; columnMap: ColumnMap; brokerFormat: BrokerFormat } | null {
+function findHeaderRow(rows: unknown[][]): { headerIndex: number; columnMap: ColumnMap; headerCells: string[] } | null {
   const searchLimit = Math.min(rows.length, 15);
 
   for (let i = 0; i < searchLimit; i++) {
@@ -250,8 +200,7 @@ function findHeaderRow(
 
     if (matchCount >= 2) {
       const columnMap = buildColumnMap(cells);
-      const brokerFormat = detectBrokerFormat(cells);
-      return { headerIndex: i, columnMap, brokerFormat };
+      return { headerIndex: i, columnMap, headerCells: cells };
     }
   }
   return null;
@@ -276,13 +225,64 @@ function buildColumnMap(headerCells: string[]): ColumnMap {
   return map;
 }
 
-/** Signature unique d'un trade, utilisée pour la détection de doublons. */
 function buildSignature(symbol: string, entryDate: Date, pnl: number): string {
   return `${symbol}_${entryDate.getTime()}_${pnl.toFixed(2)}`;
 }
 
-/** Transforme une ligne brute en objet Trade normalisé, ou null si invalide. */
-function normalizeRow(row: unknown[], columnMap: ColumnMap, brokerFormat: BrokerFormat) {
+/**
+ * Détermine la taille de position réelle avec la stratégie la plus fiable
+ * disponible, dans cet ordre de priorité :
+ *
+ * 1. DÉRIVATION DEPUIS LE PNL DU BROKER (le plus robuste, universel) :
+ *    positionSize = pnl_broker / écart_de_prix. Comme le PnL broker est
+ *    conservé tel quel (jamais recalculé), le montant affiché dans l'app
+ *    est mathématiquement garanti identique au broker, quelle que soit
+ *    l'unité de volume utilisée par ce dernier.
+ *
+ * 2. PROFIL BROKER CONNU (fallback) : utilisé seulement si le PnL est absent
+ *    (trade encore ouvert) et qu'un profil a été détecté via la signature
+ *    d'en-tête (jamais via un seuil de valeur arbitraire).
+ *
+ * 3. VALEUR BRUTE : broker inconnu et pas de PnL disponible — la valeur est
+ *    conservée telle quelle et signalée pour vérification manuelle côté UI.
+ */
+function resolvePositionSize(params: {
+  rawPositionSize: number;
+  entryPrice: number;
+  exitPrice: number | null;
+  pnlFromFile: number | null;
+  direction: "LONG" | "SHORT";
+  fees: number;
+  brokerProfile: BrokerProfile | null;
+}): { positionSize: number; source: PositionSizeSource } {
+  const { rawPositionSize, entryPrice, exitPrice, pnlFromFile, direction, fees, brokerProfile } = params;
+
+  if (exitPrice !== null && pnlFromFile !== null) {
+    const rawDiff = direction === "LONG" ? exitPrice - entryPrice : entryPrice - exitPrice;
+    // On ajoute les frais au PnL avant division car pnl_broker = rawDiff * size - fees.
+    const priceMove = rawDiff;
+    if (Math.abs(priceMove) > 1e-9) {
+      const derivedSize = (pnlFromFile + fees) / priceMove;
+      // Une taille dérivée négative ou nulle indique une incohérence (ex: mauvaise
+      // colonne de direction) — dans ce cas on retombe sur les couches suivantes
+      // plutôt que d'enregistrer une valeur clairement fausse.
+      if (derivedSize > 0 && Number.isFinite(derivedSize)) {
+        return { positionSize: Number(derivedSize.toFixed(6)), source: "derived_from_pnl" };
+      }
+    }
+  }
+
+  if (brokerProfile && brokerProfile.lotSizeMultiplier !== 1) {
+    return {
+      positionSize: Number((rawPositionSize * brokerProfile.lotSizeMultiplier).toFixed(6)),
+      source: "broker_profile",
+    };
+  }
+
+  return { positionSize: rawPositionSize || 1, source: rawPositionSize ? "raw" : "fallback_default" };
+}
+
+function normalizeRow(row: unknown[], columnMap: ColumnMap, brokerProfile: BrokerProfile | null) {
   const get = (idx?: number) => (idx !== undefined ? row[idx] : undefined);
 
   const symbolRaw = get(columnMap.symbol);
@@ -296,18 +296,26 @@ function normalizeRow(row: unknown[], columnMap: ColumnMap, brokerFormat: Broker
   const exitDate = parseFlexibleDate(get(columnMap.exitDate));
   const entryPrice = parseFlexibleNumber(get(columnMap.entryPrice));
   const exitPrice = columnMap.exitPrice !== undefined ? parseFlexibleNumber(get(columnMap.exitPrice)) : null;
-
-  // Taille de position : parsing brut puis normalisation selon le courtier détecté
-  // (corrige notamment le décalage décimal des volumes XTB : 0.002 -> 0.2).
-  const rawPositionSize = parseFlexibleNumber(get(columnMap.positionSize)) || 1;
-  const positionSize = normalizeLotSize(rawPositionSize, brokerFormat);
-
+  const rawPositionSize = parseFlexibleNumber(get(columnMap.positionSize));
   const fees = columnMap.feesIndices.reduce((sum, idx) => sum + Math.abs(parseFlexibleNumber(row[idx])), 0);
   const direction = normalizeDirection(get(columnMap.direction));
 
-  // On privilégie le PnL fourni par le courtier ; sinon on le calcule nous-mêmes.
-  let pnl = columnMap.pnl !== undefined ? parseFlexibleNumber(get(columnMap.pnl)) : 0;
-  if (columnMap.pnl === undefined && exitPrice !== null) {
+  // Le PnL du broker est la vérité terrain : on ne le recalcule JAMAIS quand il existe.
+  const pnlFromFile = columnMap.pnl !== undefined ? parseFlexibleNumber(get(columnMap.pnl)) : null;
+
+  const { positionSize, source } = resolvePositionSize({
+    rawPositionSize,
+    entryPrice,
+    exitPrice,
+    pnlFromFile,
+    direction,
+    fees,
+    brokerProfile,
+  });
+
+  // pnl final : broker si disponible, sinon calcul de secours avec le volume résolu.
+  let pnl = pnlFromFile ?? 0;
+  if (pnlFromFile === null && exitPrice !== null) {
     const rawDiff = direction === "LONG" ? exitPrice - entryPrice : entryPrice - exitPrice;
     pnl = rawDiff * positionSize - fees;
   }
@@ -334,11 +342,13 @@ function normalizeRow(row: unknown[], columnMap: ColumnMap, brokerFormat: Broker
     pnlPercentage,
     riskRewardRatio: null,
     status,
-    // Le champ tags reste vide : la saisie des tags de stratégie est laissée à l'utilisateur.
-    tags: JSON.stringify([]),
+    tags: JSON.stringify([]), // laissé vide : saisie manuelle par l'utilisateur
     notes: comment || null,
     beforeImageUrl: null,
     afterImageUrl: null,
+    // Métadonnée d'audit, retirée avant écriture en base (voir plus bas) mais
+    // renvoyée dans la réponse pour permettre un écran de vérification côté UI.
+    _positionSizeSource: source,
   };
 }
 
@@ -357,7 +367,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
     }
 
-    // 2. Récupération du fichier depuis le FormData
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
 
@@ -368,7 +377,6 @@ export async function POST(request: NextRequest) {
     const filename = file.name.toLowerCase();
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // 3. Extraction des lignes brutes selon le format du fichier
     let rows: unknown[][];
     if (filename.endsWith(".zip")) {
       rows = await extractRowsFromZip(buffer);
@@ -387,8 +395,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Impossible de lire le contenu du fichier." }, { status: 400 });
     }
 
-    // 4. Détection dynamique de la ligne d'en-tête, du mapping des colonnes
-    //    et du courtier d'origine (pour les règles de normalisation spécifiques).
     const headerInfo = findHeaderRow(rows);
     if (!headerInfo || headerInfo.columnMap.symbol === undefined || headerInfo.columnMap.entryDate === undefined) {
       return NextResponse.json(
@@ -397,17 +403,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Normalisation de chaque ligne de données
+    // Détection du broker via signature d'en-tête, utilisée uniquement en
+    // fallback pour les trades sans PnL (voir resolvePositionSize).
+    const brokerProfile = detectBrokerProfile(headerInfo.headerCells);
+
     const dataRows = rows.slice(headerInfo.headerIndex + 1);
     const parsedTrades = dataRows
-      .map((row) => normalizeRow(row, headerInfo.columnMap, headerInfo.brokerFormat))
+      .map((row) => normalizeRow(row, headerInfo.columnMap, brokerProfile))
       .filter((t): t is NonNullable<typeof t> => t !== null);
 
     if (parsedTrades.length === 0) {
       return NextResponse.json({ error: "Aucun trade valide trouvé dans le fichier." }, { status: 400 });
     }
 
-    // 6. Anti-doublons : comparaison avec les trades déjà présents en base
     const existingTrades = await prisma.trade.findMany({
       where: { userId: user.id },
       select: { symbol: true, entryDate: true, pnl: true },
@@ -416,22 +424,35 @@ export async function POST(request: NextRequest) {
       existingTrades.map((t) => buildSignature(t.symbol, t.entryDate, t.pnl))
     );
 
-    const newTrades: (ReturnType<typeof normalizeRow> & { userId: string })[] = [];
+    const newTrades: any[] = [];
     let duplicateCount = 0;
+    // Trades dont la taille de position n'a pu être ni dérivée du PnL ni
+    // résolue via un profil broker connu — à faire vérifier par l'utilisateur.
+    const flaggedForReview: { symbol: string; entryDate: string; positionSize: number }[] = [];
 
     for (const trade of parsedTrades) {
-      const signature = buildSignature(trade.symbol, trade.entryDate, trade.pnl);
+      const { _positionSizeSource, ...cleanTrade } = trade;
+
+      const signature = buildSignature(cleanTrade.symbol, cleanTrade.entryDate, cleanTrade.pnl);
       if (knownSignatures.has(signature)) {
         duplicateCount++;
         continue;
       }
-      knownSignatures.add(signature); // évite aussi les doublons internes au même fichier
-      newTrades.push({ ...trade, userId: user.id });
+      knownSignatures.add(signature);
+
+      if (_positionSizeSource === "raw" || _positionSizeSource === "fallback_default") {
+        flaggedForReview.push({
+          symbol: cleanTrade.symbol,
+          entryDate: cleanTrade.entryDate.toISOString(),
+          positionSize: cleanTrade.positionSize,
+        });
+      }
+
+      newTrades.push({ ...cleanTrade, userId: user.id });
     }
 
-    // 7. Insertion en masse des nouveaux trades
     if (newTrades.length > 0) {
-      await prisma.trade.createMany({ data: newTrades as any });
+      await prisma.trade.createMany({ data: newTrades });
     }
 
     return NextResponse.json({
@@ -439,7 +460,9 @@ export async function POST(request: NextRequest) {
       imported: newTrades.length,
       duplicates: duplicateCount,
       total: parsedTrades.length,
-      brokerFormat: headerInfo.brokerFormat,
+      brokerDetected: brokerProfile?.label ?? "Non identifié (générique)",
+      // Permet au front d'afficher un avertissement ciblé sans bloquer l'import.
+      needsReview: flaggedForReview,
     });
   } catch (err) {
     console.error("Erreur lors de l'import des trades :", err);
