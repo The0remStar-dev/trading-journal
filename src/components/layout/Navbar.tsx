@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LineChart, LogOut, NotebookText } from "lucide-react";
+import { LineChart, LogOut, NotebookText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LineChart },
   { href: "/trades", label: "Trade Log", icon: NotebookText },
+  { href: "/settings", label: "Paramètres", icon: Settings },
 ];
 
 export function Navbar() {
@@ -33,7 +34,12 @@ export function Navbar() {
           </div>
           <nav className="flex items-center gap-1">
             {NAV_ITEMS.map((item) => {
-              const active = pathname.startsWith(item.href);
+              // Évite que "/settings" ne reste actif sur une future route "/settings/xyz"
+              // non prévue, tout en gérant correctement les sous-routes légitimes.
+              const active =
+                item.href === "/dashboard"
+                  ? pathname.startsWith("/dashboard")
+                  : pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.href}
