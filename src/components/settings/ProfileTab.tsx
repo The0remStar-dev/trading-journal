@@ -1,3 +1,4 @@
+// filepath: src/components/settings/ProfileTab.tsx
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,15 +10,28 @@ import type { ProfileInput, ExperienceLevel } from "@/types/profile";
 interface ProfileTabProps {
   form: ProfileInput;
   avatarUrl: string | null;
+  avatarVersion?: string;
   onChange: <K extends keyof ProfileInput>(key: K, value: ProfileInput[K]) => void;
   onAvatarUpload: (file: File) => Promise<string>;
   onAvatarError: (message: string) => void;
 }
 
-export function ProfileTab({ form, avatarUrl, onChange, onAvatarUpload, onAvatarError }: ProfileTabProps) {
+export function ProfileTab({
+  form,
+  avatarUrl,
+  avatarVersion,
+  onChange,
+  onAvatarUpload,
+  onAvatarError,
+}: ProfileTabProps) {
   return (
     <div className="flex flex-col gap-5">
-      <AvatarUpload currentUrl={avatarUrl} onUpload={onAvatarUpload} onError={onAvatarError} />
+      <AvatarUpload
+        currentUrl={avatarUrl}
+        version={avatarVersion}
+        onUpload={onAvatarUpload}
+        onError={onAvatarError}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">

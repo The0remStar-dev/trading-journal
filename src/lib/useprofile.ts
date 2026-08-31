@@ -1,3 +1,4 @@
+// filepath: src/lib/useProfile.ts
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
@@ -12,7 +13,7 @@ export function useProfile() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/user/settings");
+      const res = await fetch("/api/user/settings", { cache: "no-store" });
       if (!res.ok) throw new Error("Impossible de charger le profil.");
       const data = await res.json();
       setProfile(data.profile);
@@ -45,7 +46,9 @@ export function useProfile() {
     const res = await fetch("/api/user/avatar", { method: "POST", body: formData });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error ?? "Échec de l'upload.");
-    setProfile((prev) => (prev ? { ...prev, avatarUrl: data.avatarUrl } : prev));
+    setProfile((prev) =>
+      prev ? { ...prev, avatarUrl: data.avatarUrl, updatedAt: data.updatedAt } : prev
+    );
     return data.avatarUrl as string;
   }, []);
 

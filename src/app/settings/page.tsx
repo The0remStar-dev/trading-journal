@@ -1,3 +1,4 @@
+// filepath: src/app/settings/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -29,11 +30,9 @@ export default function SettingsPage() {
   const { toast } = useToast();
 
   const [form, setForm] = useState<ProfileInput>(DEFAULT_FORM);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Synchronise le formulaire local dès que le profil est chargé depuis l'API.
   useEffect(() => {
     if (profile) {
       setForm({
@@ -44,15 +43,12 @@ export default function SettingsPage() {
         initialCapital: profile.initialCapital,
         language: profile.language,
       });
-      setAvatarUrl(profile.avatarUrl);
     }
   }, [profile]);
 
-  // Récupère l'email de l'utilisateur connecté pour l'onglet Sécurité.
-// Récupère l'email de l'utilisateur connecté pour l'onglet Sécurité.
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }: { data: { user: { email?: string } | null } }) => {
+    supabase.auth.getUser().then(({ data }) => {
       if (data.user?.email) setEmail(data.user.email);
     });
   }, []);
@@ -63,7 +59,6 @@ export default function SettingsPage() {
 
   async function handleAvatarUpload(file: File) {
     const url = await uploadAvatar(file);
-    setAvatarUrl(url);
     toast({ title: "Photo de profil mise à jour", variant: "success" });
     return url;
   }
@@ -116,7 +111,8 @@ export default function SettingsPage() {
                   <TabsContent value="profile">
                     <ProfileTab
                       form={form}
-                      avatarUrl={avatarUrl}
+                      avatarUrl={profile?.avatarUrl ?? null}
+                      avatarVersion={profile?.updatedAt}
                       onChange={updateField}
                       onAvatarUpload={handleAvatarUpload}
                       onAvatarError={(msg) => toast({ title: "Erreur", description: msg, variant: "error" })}
@@ -136,8 +132,6 @@ export default function SettingsPage() {
                   </TabsContent>
                 </Tabs>
 
-                {/* Le bouton de sauvegarde couvre Profil / Trading & Capital / Préférences.
-                    La sécurité (mot de passe) a son propre bouton, géré indépendamment. */}
                 <div className="mt-6 flex justify-end border-t border-border pt-5">
                   <Button onClick={handleSave} disabled={saving}>
                     {saving ? "Enregistrement..." : "Enregistrer les modifications"}

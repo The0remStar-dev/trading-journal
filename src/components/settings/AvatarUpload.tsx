@@ -1,34 +1,47 @@
+// filepath: src/components/settings/AvatarUpload.tsx
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AvatarUploadProps {
   currentUrl: string | null;
+  /** Ex: profile.updatedAt — invalide le cache navigateur au rendu, sans jamais
+   *  être persisté dans l'URL stockée en base. */
+  version?: string;
   onUpload: (file: File) => Promise<string>;
   onError: (message: string) => void;
 }
 
-export function AvatarUpload({ currentUrl, onUpload, onError }: AvatarUploadProps) {
+export function AvatarUpload({ currentUrl, version, onUpload, onError }: AvatarUploadProps) {
   const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(currentUrl);
+  const [localPreview, setLocalPreview] = useState<string | null>(null);
+  const [broken, setBroken] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (localPreview) URL.revokeObjectURL(localPreview);
+    };
+  }, [localPreview]);
+
+  const displayUrl =
+    localPreview ?? (currentUrl ? `${currentUrl}${version ? `?v=${version}` : ""}` : null);
 
   async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Prévisualisation immédiate côté client, avant même la fin de l'upload.
-    const localPreview = URL.createObjectURL(file);
-    setPreviewUrl(localPreview);
+    const objectUrl = URL.createObjectURL(file);
+    setLocalPreview(objectUrl);
+    setBroken(false);
     setUploading(true);
 
     try {
-      const finalUrl = await onUpload(file);
-      setPreviewUrl(finalUrl);
+      await onUpload(file);
     } catch (err) {
-      setPreviewUrl(currentUrl);
+      setLocalPreview(null);
       onError(err instanceof Error ? err.message : "Échec de l'upload de l'avatar.");
     } finally {
       setUploading(false);
@@ -39,8 +52,13 @@ export function AvatarUpload({ currentUrl, onUpload, onError }: AvatarUploadProp
   return (
     <div className="flex items-center gap-4">
       <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border border-border bg-background">
-        {previewUrl ? (
-          <img src={previewUrl} alt="Avatar" className="h-full w-full object-cover" />
+        {displayUrl && !broken ? (
+          <img
+            src={displayUrl}
+            alt="Avatar"
+            className="h-full w-full object-cover"
+            onError={() => setBroken(true)}
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-muted">
             <Camera className="h-6 w-6" />

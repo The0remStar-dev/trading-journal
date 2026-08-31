@@ -1,9 +1,10 @@
+// filepath: src/app/api/user/settings/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import { ensureProfile } from "@/lib/profile";
 import type { ProfileInput } from "@/types/profile";
 
-// GET /api/user/settings — retourne le profil de l'utilisateur connecté
 export async function GET() {
   const supabase = await createClient();
   const {
@@ -15,24 +16,10 @@ export async function GET() {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
-  let profile = await prisma.profile.findUnique({ where: { id: user.id } });
-
-  if (!profile) {
-    const baseUsername = (user.email?.split("@")[0] ?? "trader").toLowerCase().replace(/[^a-z0-9_]/g, "");
-    const fallbackUsername = `${baseUsername}_${user.id.slice(0, 6)}`;
-
-    profile = await prisma.profile.create({
-      data: {
-        id: user.id,
-        username: fallbackUsername,
-      },
-    });
-  }
-
+  const profile = await ensureProfile(user.id, user.email);
   return NextResponse.json({ profile });
 }
 
-// PUT /api/user/settings — met à jour le profil
 export async function PUT(request: NextRequest) {
   const supabase = await createClient();
   const {
@@ -46,34 +33,25 @@ export async function PUT(request: NextRequest) {
 
   const body = (await request.json()) as ProfileInput;
 
-  // Validation minimale côté serveur
   if (!body.username || body.username.trim().length < 3) {
     return NextResponse.json(
       { error: "Le nom d'utilisateur doit contenir au moins 3 caractères." },
       { status: 400 }
     );
   }
-  
-  if (body.initialCapital !== null && body.initialCapital !== undefined && (isNaN(Number(body.initialCapital)) || body.initialCapital <= 0)) {
+  if (body.initialCapital !== null && (isNaN(body.initialCapital) || body.initialCapital <= 0)) {
     return NextResponse.json(
       { error: "Le capital initial doit être un nombre positif." },
       { status: 400 }
     );
   }
 
+  await ensureProfile(user.id, user.email);
+
   try {
-    const updated = await prisma.profile.upsert({
+    const updated = await prisma.profile.update({
       where: { id: user.id },
-      update: {
-        username: body.username.trim().toLowerCase(),
-        fullName: body.fullName?.trim() || null,
-        bio: body.bio?.trim() || null,
-        experienceLevel: body.experienceLevel,
-        initialCapital: body.initialCapital,
-        language: body.language,
-      },
-      create: {
-        id: user.id,
+      data: {
         username: body.username.trim().toLowerCase(),
         fullName: body.fullName?.trim() || null,
         bio: body.bio?.trim() || null,
