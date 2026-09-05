@@ -2,7 +2,29 @@ export type AccountType = "LIVE" | "BACKTEST" | "EVALUATION";
 export type Direction = "LONG" | "SHORT";
 export type TradeStatus = "WIN" | "LOSS" | "BREAKEVEN" | "OPEN";
 
-// Client-side shape: tags is a parsed string[], not the raw JSON string stored in the DB.
+export type TradeEmotion =
+  | "FOMO"
+  | "REVENGE"
+  | "IMPATIENT"
+  | "FEARFUL"
+  | "GREEDY"
+  | "CONFIDENT"
+  | "PATIENT"
+  | "DISCIPLINED"
+  | "NEUTRAL";
+
+export const EMOTION_LABELS: Record<TradeEmotion, string> = {
+  FOMO: "FOMO",
+  REVENGE: "Revenge Trading",
+  IMPATIENT: "Impatient",
+  FEARFUL: "Craintif",
+  GREEDY: "Avide",
+  CONFIDENT: "Confiant",
+  PATIENT: "Patient",
+  DISCIPLINED: "Discipliné",
+  NEUTRAL: "Neutre",
+};
+
 export interface Trade {
   id: string;
   accountType: AccountType;
@@ -20,13 +42,13 @@ export interface Trade {
   status: TradeStatus;
   tags: string[];
   notes: string | null;
+  emotion: TradeEmotion | null;
   beforeImageUrl: string | null;
   afterImageUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-// Payload shape sent from the trade form to the API.
 export interface TradeInput {
   accountType: AccountType;
   symbol: string;
@@ -40,6 +62,7 @@ export interface TradeInput {
   riskRewardRatio: number | null;
   tags: string[];
   notes: string | null;
+  emotion: TradeEmotion | null;
   beforeImageUrl: string | null;
   afterImageUrl: string | null;
 }
@@ -52,4 +75,5 @@ export interface TradeFilters {
   status?: TradeStatus | "ALL";
   accountType?: AccountType | "ALL";
   tags?: string[];
+  emotion?: TradeEmotion | "ALL";
 }

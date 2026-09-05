@@ -1,10 +1,6 @@
 import type { Trade as PrismaTrade } from "@prisma/client";
 import type { Trade } from "@/types/trade";
 
-/**
- * Converts a raw Prisma Trade row (tags stored as JSON string, Dates as Date objects)
- * into the client-facing Trade shape (tags as string[], dates as ISO strings).
- */
 export function serializeTrade(row: PrismaTrade): Trade {
   let tags: string[] = [];
   try {
@@ -30,6 +26,7 @@ export function serializeTrade(row: PrismaTrade): Trade {
     status: row.status,
     tags,
     notes: row.notes,
+    emotion: (row as any).emotion ?? null,
     beforeImageUrl: row.beforeImageUrl,
     afterImageUrl: row.afterImageUrl,
     createdAt: row.createdAt.toISOString(),

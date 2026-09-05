@@ -1,4 +1,3 @@
-// filepath: src/app/api/user/settings/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
@@ -45,6 +44,17 @@ export async function PUT(request: NextRequest) {
       { status: 400 }
     );
   }
+  if (
+    body.riskPerTradePercent === undefined ||
+    isNaN(body.riskPerTradePercent) ||
+    body.riskPerTradePercent <= 0 ||
+    body.riskPerTradePercent > 100
+  ) {
+    return NextResponse.json(
+      { error: "Le risque par trade doit être un pourcentage entre 0 et 100." },
+      { status: 400 }
+    );
+  }
 
   await ensureProfile(user.id, user.email);
 
@@ -57,6 +67,7 @@ export async function PUT(request: NextRequest) {
         bio: body.bio?.trim() || null,
         experienceLevel: body.experienceLevel,
         initialCapital: body.initialCapital,
+        riskPerTradePercent: body.riskPerTradePercent,
         language: body.language,
       },
     });

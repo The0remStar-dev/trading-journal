@@ -1,3 +1,4 @@
+// filepath: src/components/trades/TradeFormModal.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -18,7 +19,8 @@ import { ImageDropzone } from "@/components/trades/ImageDropzone";
 import { calculatePnl, calculatePnlPercentage, deriveStatus } from "@/lib/calculations";
 import { formatCurrency, formatPercent, cn } from "@/lib/utils";
 import { X } from "lucide-react";
-import type { Trade, TradeInput, AccountType, Direction } from "@/types/trade";
+import { EMOTION_LABELS } from "@/types/trade";
+import type { Trade, TradeInput, AccountType, Direction, TradeEmotion } from "@/types/trade";
 
 interface TradeFormModalProps {
   open: boolean;
@@ -40,6 +42,7 @@ const EMPTY_FORM: TradeInput = {
   riskRewardRatio: null,
   tags: [],
   notes: "",
+  emotion: null,
   beforeImageUrl: null,
   afterImageUrl: null,
 };
@@ -64,6 +67,7 @@ export function TradeFormModal({ open, onOpenChange, initialTrade, onSubmit }: T
         riskRewardRatio: initialTrade.riskRewardRatio,
         tags: initialTrade.tags,
         notes: initialTrade.notes ?? "",
+        emotion: initialTrade.emotion,
         beforeImageUrl: initialTrade.beforeImageUrl,
         afterImageUrl: initialTrade.afterImageUrl,
       });
@@ -212,6 +216,24 @@ export function TradeFormModal({ open, onOpenChange, initialTrade, onSubmit }: T
                 value={form.fees}
                 onChange={(e) => update("fees", Number(e.target.value))}
               />
+            </Field>
+            <Field label="Émotion dominante">
+              <Select
+                value={form.emotion ?? "NONE"}
+                onValueChange={(v) => update("emotion", v === "NONE" ? null : (v as TradeEmotion))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Non renseignée" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">Non renseignée</SelectItem>
+                  {Object.entries(EMOTION_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           </div>
 

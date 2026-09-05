@@ -1,3 +1,4 @@
+// filepath: src/app/api/trades/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serializeTrade } from "@/lib/serialize";
@@ -92,6 +93,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       status,
       tags: JSON.stringify(body.tags ?? []),
       notes: body.notes ?? null,
+      emotion: body.emotion ?? null,
       beforeImageUrl: body.beforeImageUrl ?? null,
       afterImageUrl: body.afterImageUrl ?? null,
     },

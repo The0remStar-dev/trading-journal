@@ -10,6 +10,11 @@ interface TradingCapitalTabProps {
 }
 
 export function TradingCapitalTab({ form, onChange }: TradingCapitalTabProps) {
+  const riskAmountPreview =
+    form.initialCapital && form.riskPerTradePercent
+      ? (form.initialCapital * (form.riskPerTradePercent / 100)).toFixed(2)
+      : null;
+
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-md border border-accent-cyan/30 bg-accent-cyan/5 px-4 py-3 text-sm text-foreground">
@@ -48,9 +53,44 @@ export function TradingCapitalTab({ form, onChange }: TradingCapitalTabProps) {
             onChange={(e) => onChange("initialCapital", e.target.value ? Number(e.target.value) : null)}
           />
         </div>
-        <p className="text-xs text-muted">
-          Non visible publiquement. Modifiable à tout moment si votre taille de compte évolue.
-        </p>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <Label>Risque par trade (% du capital)</Label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="text-muted hover:text-foreground">
+                <Info className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Définit ce que représente "1R" : si vous risquez habituellement 1% de votre capital
+              par trade, 1R = 1% de votre capital initial. Ajustez selon votre gestion du risque réelle.
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        <div className="relative max-w-xs">
+          <Input
+            required
+            type="number"
+            min={0.1}
+            max={100}
+            step="0.1"
+            placeholder="1"
+            className="pr-8"
+            value={form.riskPerTradePercent ?? ""}
+            onChange={(e) => onChange("riskPerTradePercent", Number(e.target.value))}
+          />
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted">
+            %
+          </span>
+        </div>
+        {riskAmountPreview && (
+          <p className="text-xs text-muted">
+            Avec ces réglages, <span className="font-medium text-foreground">1R = ${riskAmountPreview}</span>.
+          </p>
+        )}
       </div>
     </div>
   );

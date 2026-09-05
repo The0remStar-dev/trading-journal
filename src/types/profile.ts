@@ -9,18 +9,19 @@ export interface Profile {
   bio: string | null;
   experienceLevel: ExperienceLevel;
   initialCapital: number | null;
+  riskPerTradePercent: number;
   language: Language;
   createdAt: string;
   updatedAt: string;
 }
 
-// Payload envoyé par le formulaire de paramètres (PUT /api/user/settings).
 export interface ProfileInput {
   username: string;
   fullName: string | null;
   bio: string | null;
   experienceLevel: ExperienceLevel;
   initialCapital: number | null;
+  riskPerTradePercent: number;
   language: Language;
 }
 

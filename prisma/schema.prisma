@@ -30,6 +30,7 @@ model Trade {
   afterImageUrl   String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  emotion TradeEmotion?
 
   @@index([userId])
   @@index([entryDate])
@@ -89,6 +90,10 @@ model Profile {
   // publiquement dans les API de social trading (profils publics, feed, etc.).
   initialCapital Float?
 
+  // Pourcentage du capital initial risqué par trade, utilisé comme base de
+  // calcul du "1R" pour toute la plateforme (ex: 1% de 10 000$ = 100$ = 1R).
+  riskPerTradePercent Float @default(1)
+
   language Language @default(FR)
 
   createdAt DateTime @default(now())
@@ -96,3 +101,19 @@ model Profile {
 
   @@index([username])
 }
+
+// --- Ajout : enum pour le bilan émotionnel ---
+enum TradeEmotion {
+  FOMO
+  REVENGE
+  IMPATIENT
+  FEARFUL
+  GREEDY
+  CONFIDENT
+  PATIENT
+  DISCIPLINED
+  NEUTRAL
+}
+
+// --- Sur le modèle Trade existant : ajoutez ce champ ---
+// emotion TradeEmotion?

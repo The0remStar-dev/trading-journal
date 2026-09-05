@@ -1,4 +1,3 @@
-// filepath: src/app/settings/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -22,6 +21,7 @@ const DEFAULT_FORM: ProfileInput = {
   bio: null,
   experienceLevel: "BEGINNER",
   initialCapital: null,
+  riskPerTradePercent: 1,
   language: "FR",
 };
 
@@ -41,6 +41,7 @@ export default function SettingsPage() {
         bio: profile.bio,
         experienceLevel: profile.experienceLevel,
         initialCapital: profile.initialCapital,
+        riskPerTradePercent: profile.riskPerTradePercent,
         language: profile.language,
       });
     }
