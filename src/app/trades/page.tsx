@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
-import { Navbar } from "@/components/layout/Navbar";
+import { Plus } from "lucide-react";
+import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { TradeTable } from "@/components/trades/TradeTable";
 import { TradeFormModal } from "@/components/trades/TradeFormModal";
 import { TradeDetailModal } from "@/components/trades/TradeDetailModal";
-import { ImportTradesModal } from "@/components/trades/ImportTradesModal";
 import {
   Dialog,
   DialogContent,
@@ -29,10 +28,6 @@ export default function TradesPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<Trade | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  // Nouveaux états pour la fonctionnalité "Delete All"
-  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
-  const [deletingAll, setDeletingAll] = useState(false);
 
   function openNewTradeForm() {
     setEditingTrade(null);
@@ -68,71 +63,35 @@ export default function TradesPage() {
     }
   }
 
-  // Fonction pour tout supprimer
-  async function confirmDeleteAll() {
-    setDeletingAll(true);
-    try {
-      const res = await fetch("/api/trades/delete-all", {
-        method: "DELETE",
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Erreur lors de la suppression globale.");
-      }
-      setDeleteAllOpen(false);
-      window.location.reload();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setDeletingAll(false);
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Trade Log</h1>
-            <p className="text-sm text-muted">Every trade, filterable and sortable.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {trades.length > 0 && (
-              <Button
-                variant="outline"
-                className="border-loss/40 text-loss hover:bg-loss-dim"
-                onClick={() => setDeleteAllOpen(true)}
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete All
-              </Button>
-            )}
-            <ImportTradesModal onSuccess={() => window.location.reload()} />
-            <Button onClick={openNewTradeForm}>
-              <Plus className="h-4 w-4" />
-              Log Trade
-            </Button>
-          </div>
+    <AppShell>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Trade Log</h1>
+          <p className="text-sm text-muted">Every trade, filterable and sortable.</p>
         </div>
+        <Button onClick={openNewTradeForm}>
+          <Plus className="h-4 w-4" />
+          Log Trade
+        </Button>
+      </div>
 
-        {error && (
-          <div className="mb-4 rounded-md border border-loss/30 bg-loss-dim px-4 py-3 text-sm text-loss">
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="mb-4 rounded-md border border-loss/30 bg-loss-dim px-4 py-3 text-sm text-loss">
+          {error}
+        </div>
+      )}
 
-        {loading ? (
-          <div className="h-96 animate-pulse rounded-lg border border-border bg-surface" />
-        ) : (
-          <TradeTable
-            trades={trades}
-            onView={openDetail}
-            onEdit={openEditForm}
-            onDelete={setDeleteTarget}
-          />
-        )}
-      </main>
+      {loading ? (
+        <div className="h-96 animate-pulse rounded-lg border border-border bg-surface" />
+      ) : (
+        <TradeTable
+          trades={trades}
+          onView={openDetail}
+          onEdit={openEditForm}
+          onDelete={setDeleteTarget}
+        />
+      )}
 
       <TradeFormModal
         open={formOpen}
@@ -143,7 +102,6 @@ export default function TradesPage() {
 
       <TradeDetailModal trade={detailTrade} open={detailOpen} onOpenChange={setDetailOpen} />
 
-      {/* Modale de suppression d'un seul trade */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent size="md">
           <DialogHeader>
@@ -162,27 +120,7 @@ export default function TradesPage() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Modale de confirmation pour "Delete All" */}
-      <Dialog open={deleteAllOpen} onOpenChange={setDeleteAllOpen}>
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle className="text-loss">⚠️ Delete ALL trades?</DialogTitle>
-            <DialogDescription>
-              You are about to permanently delete your entire trade history ({trades.length} trade{trades.length > 1 ? "s" : ""}). This action is strictly irreversible.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setDeleteAllOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={confirmDeleteAll} disabled={deletingAll}>
-              {deletingAll ? "Deleting everything..." : "Yes, Delete All"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+    </AppShell>
   );
 }
 
