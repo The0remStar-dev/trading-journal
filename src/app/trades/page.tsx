@@ -1,3 +1,4 @@
+// filepath: src/app/trades/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { TradeTable } from "@/components/trades/TradeTable";
 import { TradeFormModal } from "@/components/trades/TradeFormModal";
 import { TradeDetailModal } from "@/components/trades/TradeDetailModal";
+import { ImportTradesModal } from "@/components/trades/ImportTradesModal";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +20,7 @@ import { useTrades } from "@/lib/useTrades";
 import type { Trade, TradeInput } from "@/types/trade";
 
 export default function TradesPage() {
-  const { trades, loading, error, createTrade, updateTrade, deleteTrade } = useTrades();
+  const { trades, loading, error, refetch, createTrade, updateTrade, deleteTrade } = useTrades();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
@@ -70,10 +72,13 @@ export default function TradesPage() {
           <h1 className="text-xl font-semibold text-foreground">Trade Log</h1>
           <p className="text-sm text-muted">Every trade, filterable and sortable.</p>
         </div>
-        <Button onClick={openNewTradeForm}>
-          <Plus className="h-4 w-4" />
-          Log Trade
-        </Button>
+        <div className="flex gap-2">
+          <ImportTradesModal onSuccess={refetch} />
+          <Button onClick={openNewTradeForm}>
+            <Plus className="h-4 w-4" />
+            Log Trade
+          </Button>
+        </div>
       </div>
 
       {error && (
