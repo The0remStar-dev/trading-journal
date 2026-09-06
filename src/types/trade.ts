@@ -11,6 +11,7 @@ export type TradeEmotion =
   | "CONFIDENT"
   | "PATIENT"
   | "DISCIPLINED"
+  | "STRESSED"
   | "NEUTRAL";
 
 export const EMOTION_LABELS: Record<TradeEmotion, string> = {
@@ -22,6 +23,7 @@ export const EMOTION_LABELS: Record<TradeEmotion, string> = {
   CONFIDENT: "Confiant",
   PATIENT: "Patient",
   DISCIPLINED: "Discipliné",
+  STRESSED: "Stressé",
   NEUTRAL: "Neutre",
 };
 

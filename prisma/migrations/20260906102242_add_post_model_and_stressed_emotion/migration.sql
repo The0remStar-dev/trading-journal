@@ -1,0 +1,5 @@
+-- AlterEnum
+ALTER TYPE "TradeEmotion" ADD VALUE 'STRESSED';
+
+-- AddForeignKey
+ALTER TABLE "Post" ADD CONSTRAINT "Post_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Profile"("id") ON DELETE CASCADE ON UPDATE CASCADE;

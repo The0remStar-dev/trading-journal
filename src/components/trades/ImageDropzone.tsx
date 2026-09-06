@@ -9,9 +9,11 @@ interface ImageDropzoneProps {
   label: string;
   value: string | null;
   onChange: (url: string | null) => void;
+  /** Endpoint d'upload ciblé. Par défaut, celui des captures de trade. */
+  uploadUrl?: string;
 }
 
-export function ImageDropzone({ label, value, onChange }: ImageDropzoneProps) {
+export function ImageDropzone({ label, value, onChange, uploadUrl = "/api/upload" }: ImageDropzoneProps) {
   const [uploading, setUploading] = useState(false);
 
   const onDrop = useCallback(
@@ -20,19 +22,29 @@ export function ImageDropzone({ label, value, onChange }: ImageDropzoneProps) {
       if (!file) return;
       setUploading(true);
       try {
-        const dataUri = await fileToDataUri(file);
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dataUri }),
-        });
-        const data = await res.json();
-        onChange(data.url);
+        if (uploadUrl === "/api/upload") {
+          // Route legacy : accepte un data URI JSON (base64 ou Cloudinary).
+          const dataUri = await fileToDataUri(file);
+          const res = await fetch(uploadUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dataUri }),
+          });
+          const data = await res.json();
+          onChange(data.url);
+        } else {
+          // Routes Supabase Storage (ex: posts) : upload via FormData.
+          const formData = new FormData();
+          formData.append("file", file);
+          const res = await fetch(uploadUrl, { method: "POST", body: formData });
+          const data = await res.json();
+          onChange(data.url);
+        }
       } finally {
         setUploading(false);
       }
     },
-    [onChange]
+    [onChange, uploadUrl]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

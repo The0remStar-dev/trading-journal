@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
+  Users,
   NotebookText,
   CalendarClock,
   Settings,
@@ -18,10 +19,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Navigation principale : reprend les onglets déjà existants dans l'app,
-// sans en inventer de nouveaux ("Analyses" générique a été retiré).
+// Navigation principale : reprend les onglets déjà existants dans l'app.
 const MAIN_NAV_ITEMS = [
   { href: "/dashboard", label: "Accueil", icon: LayoutDashboard },
+  { href: "/feed", label: "Communauté", icon: Users },
   { href: "/trades", label: "Journal", icon: NotebookText },
   { href: "/monthly", label: "Rétrospective Mensuelle", icon: CalendarClock },
   { href: "/settings", label: "Profil & Paramètres", icon: Settings },
@@ -89,7 +90,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
             <span className="mt-0.5 text-[11px] text-muted">Progress. Together.</span>
           </div>
 
-          {/* Logo compact affiché uniquement en mode rétracté (desktop) */}
           <span className={cn("hidden h-2 w-2 rounded-full bg-win shadow-glow", collapsed && "lg:block")} />
 
           <button
@@ -101,12 +101,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
           </button>
         </div>
 
-        {/* Bouton de rétractation, visible en desktop uniquement, flottant sur la bordure */}
         <button
           onClick={onToggleCollapse}
-          className={cn(
-            "absolute -right-3 top-16 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-sm transition-colors hover:text-foreground lg:flex"
-          )}
+          className="absolute -right-3 top-16 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-sm transition-colors hover:text-foreground lg:flex"
           aria-label={collapsed ? "Déplier le menu" : "Réduire le menu"}
         >
           {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
@@ -181,8 +178,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
         </nav>
 
         <div className="flex flex-col gap-3 border-t border-border p-4">
-          {/* Carte de motivation masquée en mode rétracté : son contenu texte
-              n'a pas de sens réduit à une icône. */}
           <div
             className={cn(
               "relative overflow-hidden rounded-lg border border-win/20 bg-gradient-to-br from-win/10 via-surface to-accent-cyan/10 p-4",
@@ -197,7 +192,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
               Votre discipline d'aujourd'hui construit votre edge de demain.
             </p>
             <Link
-              href="monthly"
+              href="/monthly"
               onClick={onMobileClose}
               className="mt-3 inline-block text-xs font-medium text-win hover:underline"
             >
@@ -241,6 +236,5 @@ export function useSidebarCollapse() {
     });
   }
 
-  // Évite un flash de contenu mal positionné avant lecture du localStorage.
   return { collapsed: hydrated ? collapsed : false, toggle, hydrated };
 }
