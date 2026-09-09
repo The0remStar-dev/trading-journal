@@ -4,21 +4,34 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
+    --bg-main: #eeeff1;
+    --bg-surface: #ffffff;
+    --border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --primary: #0f172a;
+    --secondary: #f1f5f9;
+    --accent: #2563eb;
+    --success: #059669;
+    --danger: #dc2626;
+    --neutral: #64748b;
   }
 
   html,
   body {
-    background-color: #0b0e14;
-    color: #e5e7eb;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-inter), sans-serif;
   }
 
   ::selection {
-    background-color: rgba(16, 185, 129, 0.25);
+    background-color: rgba(37, 99, 235, 0.15);
   }
 
   * {
-    border-color: #2a2f3d;
+    border-color: var(--border);
   }
 
   ::-webkit-scrollbar {
@@ -26,14 +39,14 @@
     height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: #0b0e14;
+    background: var(--bg-main);
   }
   ::-webkit-scrollbar-thumb {
-    background: #2a2f3d;
-    border-radius: 8px;
+    background: #cbd5e1;
+    border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3a4152;
+    background: #94a3b8;
   }
 }
 

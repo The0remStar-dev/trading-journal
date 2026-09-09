@@ -4,32 +4,38 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard,
-  Users,
+  Home,
   NotebookText,
-  CalendarClock,
-  Settings,
+  Users,
+  BarChart3,
+  Trophy,
+  UserCircle,
+  Calendar,
   Calculator,
   StickyNote,
+  CalendarClock,
   LogOut,
+  Settings,
   X,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Navigation principale : reprend les onglets déjà existants dans l'app.
 const MAIN_NAV_ITEMS = [
-  { href: "/dashboard", label: "Accueil", icon: LayoutDashboard },
-  { href: "/feed", label: "Communauté", icon: Users },
+  { href: "/dashboard", label: "Accueil", icon: Home },
   { href: "/trades", label: "Journal", icon: NotebookText },
-  { href: "/monthly", label: "Rétrospective Mensuelle", icon: CalendarClock },
-  { href: "/settings", label: "Profil & Paramètres", icon: Settings },
+  { href: "/feed", label: "Community", icon: Users },
+  { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/challenges", label: "Challenges", icon: Trophy },
+  { href: "/settings", label: "Profil", icon: UserCircle },
 ];
 
 const TOOLS_NAV_ITEMS = [
+  { href: "/tools/economic-calendar", label: "Calendrier économique", icon: Calendar },
   { href: "/tools/risk-calculator", label: "Calculateur de risque", icon: Calculator },
-  { href: "/tools/notes", label: "Notes", icon: StickyNote },
+  { href: "/tools/notes", label: "Notes & rappels", icon: StickyNote },
+  { href: "/monthly", label: "Rétrospective mensuelle", icon: CalendarClock },
 ];
 
 const COLLAPSE_STORAGE_KEY = "tradeshare_sidebar_collapsed";
@@ -39,9 +45,18 @@ interface SidebarProps {
   onMobileClose?: () => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  username?: string;
+  avatarUrl?: string | null;
 }
 
-export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggleCollapse }: SidebarProps) {
+export function Sidebar({
+  mobileOpen = false,
+  onMobileClose,
+  collapsed,
+  onToggleCollapse,
+  username,
+  avatarUrl,
+}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -58,10 +73,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
   return (
     <>
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={onMobileClose}
-        />
+        <div className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm lg:hidden" onClick={onMobileClose} />
       )}
 
       <aside
@@ -72,44 +84,38 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
           collapsed ? "w-64 lg:w-[72px]" : "w-64"
         )}
       >
-        {/* En-tête : branding + bouton de rétractation (desktop uniquement) */}
         <div
           className={cn(
             "flex items-center border-b border-border px-5 py-5",
             collapsed ? "lg:justify-center lg:px-0" : "justify-between"
           )}
         >
-          <div className={cn("flex flex-col", collapsed && "lg:hidden")}>
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-foreground text-xs font-bold text-white">T</span>
-              <span className="text-base font-semibold tracking-tight text-foreground">TradeShare</span>
-            </div>
-            <span className="mt-1 text-[11px] text-muted">Analyse. Partage. Progresse.</span>
+          <div className={cn("flex items-center gap-2", collapsed && "lg:hidden")}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground text-[11px] font-bold text-white">
+              T
+            </span>
+            <span className="text-sm font-semibold tracking-tight text-foreground">TradeShare</span>
           </div>
 
-          <span className={cn("hidden h-7 w-7 items-center justify-center rounded-md bg-foreground text-xs font-bold text-white", collapsed && "lg:flex")}>
+          <span className={cn("hidden h-6 w-6 items-center justify-center rounded-md bg-foreground text-[11px] font-bold text-white", collapsed && "lg:flex")}>
             T
           </span>
 
-          <button
-            onClick={onMobileClose}
-            className="text-muted hover:text-foreground lg:hidden"
-            aria-label="Fermer le menu"
-          >
+          <button onClick={onMobileClose} className="text-subtle hover:text-foreground lg:hidden" aria-label="Fermer le menu">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <button
           onClick={onToggleCollapse}
-          className="absolute -right-3 top-16 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-muted shadow-sm transition-colors hover:text-foreground lg:flex"
+          className="absolute -right-3 top-16 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-subtle shadow-card transition-colors hover:text-foreground lg:flex"
           aria-label={collapsed ? "Déplier le menu" : "Réduire le menu"}
         >
           {collapsed ? <ChevronsRight className="h-3.5 w-3.5" /> : <ChevronsLeft className="h-3.5 w-3.5" />}
         </button>
 
         <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-0.5">
             {MAIN_NAV_ITEMS.map((item) => {
               const active = isActive(item.href);
               return (
@@ -121,13 +127,11 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
                     className={cn(
                       "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                       collapsed && "lg:justify-center lg:px-0",
-                      active
-                        ? "bg-secondary text-foreground"
-                        : "text-muted hover:bg-background hover:text-foreground"
+                      active ? "bg-secondary text-foreground" : "text-muted hover:bg-secondary/60 hover:text-foreground"
                     )}
                   >
                     {active && (
-                      <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-accent" />
+                      <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-accent" />
                     )}
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span className={cn(collapsed && "lg:hidden")}>{item.label}</span>
@@ -138,15 +142,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
           </ul>
 
           <div className="mt-6">
-            <p
-              className={cn(
-                "px-3 text-[10px] font-semibold uppercase tracking-wider text-muted",
-                collapsed && "lg:hidden"
-              )}
-            >
+            <p className={cn("px-3 text-[10px] font-semibold uppercase tracking-wider text-subtle", collapsed && "lg:hidden")}>
               Mes Outils
             </p>
-            <ul className="mt-2 flex flex-col gap-1">
+            <ul className="mt-2 flex flex-col gap-0.5">
               {TOOLS_NAV_ITEMS.map((item) => {
                 const active = isActive(item.href);
                 return (
@@ -158,13 +157,11 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
                       className={cn(
                         "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                         collapsed && "lg:justify-center lg:px-0",
-                        active
-                          ? "bg-secondary text-foreground"
-                          : "text-muted hover:bg-background hover:text-foreground"
+                        active ? "bg-secondary text-foreground" : "text-muted hover:bg-secondary/60 hover:text-foreground"
                       )}
                     >
                       {active && (
-                        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-accent" />
+                        <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-accent" />
                       )}
                       <item.icon className="h-4 w-4 shrink-0" />
                       <span className={cn(collapsed && "lg:hidden")}>{item.label}</span>
@@ -176,24 +173,38 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
           </div>
         </nav>
 
-        <div className="flex flex-col gap-3 border-t border-border p-4">
+        <div className="flex flex-col gap-1 border-t border-border p-3">
+          <div className={cn("flex items-center gap-2 rounded-md px-2 py-2", collapsed && "lg:justify-center")}>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-secondary">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={username} className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xs font-medium text-muted">{username?.[0]?.toUpperCase() ?? "?"}</span>
+              )}
+            </div>
+            <span className={cn("truncate text-sm font-medium text-foreground", collapsed && "lg:hidden")}>
+              {username ?? "Mon compte"}
+            </span>
+          </div>
+
           <Link
-            href="/monthly"
+            href="/settings"
             onClick={onMobileClose}
+            title={collapsed ? "Paramètres" : undefined}
             className={cn(
-              "rounded-md border border-border bg-secondary p-3 transition-colors hover:border-accent/40",
-              collapsed && "lg:hidden"
+              "flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-secondary hover:text-foreground",
+              collapsed && "lg:justify-center lg:px-0"
             )}
           >
-            <p className="text-xs font-semibold text-foreground">Ma progression</p>
-            <p className="mt-1 text-xs text-muted">Voir ma rétrospective mensuelle</p>
+            <Settings className="h-4 w-4" />
+            <span className={cn(collapsed && "lg:hidden")}>Paramètres</span>
           </Link>
 
           <button
             onClick={handleLogout}
             title={collapsed ? "Se déconnecter" : undefined}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-background hover:text-danger",
+              "flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-secondary hover:text-loss",
               collapsed && "lg:justify-center lg:px-0"
             )}
           >
@@ -206,7 +217,6 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
   );
 }
 
-/** Hook partagé par AppShell pour persister l'état replié/déplié entre les pages. */
 export function useSidebarCollapse() {
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);

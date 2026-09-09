@@ -85,12 +85,12 @@ const handleEmailAuth = async (e: React.FormEvent) => {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm p-8">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-win-dim">
-            <Lock className="h-5 w-5 text-win" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-secondary">
+            <Lock className="h-5 w-5 text-accent" />
           </div>
           <div>
             <h1 className="text-lg font-semibold text-foreground">
-              TRADE<span className="text-win">JOURNAL</span>
+              TradeShare
             </h1>
             <p className="mt-1 text-xs text-muted">
               {isSignUp ? 'Créer un compte trader' : 'Connecte-toi à ton espace'}
@@ -117,7 +117,7 @@ const handleEmailAuth = async (e: React.FormEvent) => {
 
         <div className="relative mb-4 flex items-center justify-center">
           <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
-          <span className="relative bg-card px-2 text-xs text-muted">ou avec e-mail</span>
+          <span className="relative bg-surface px-2 text-xs text-muted">ou avec e-mail</span>
         </div>
 
         <form onSubmit={handleEmailAuth} className="flex flex-col gap-3">
@@ -136,8 +136,8 @@ const handleEmailAuth = async (e: React.FormEvent) => {
             required
           />
 
-          {error && <p className="text-xs text-loss">{error}</p>}
-          {message && <p className="text-xs text-win">{message}</p>}
+          {error && <p className="text-xs text-danger">{error}</p>}
+          {message && <p className="text-xs text-success">{message}</p>}
 
           <Button type="submit" disabled={loading || !email || !password} className="w-full mt-1">
             {loading ? 'Chargement...' : isSignUp ? "S'inscrire" : 'Se connecter'}
@@ -153,7 +153,7 @@ const handleEmailAuth = async (e: React.FormEvent) => {
               setError(null)
               setMessage(null)
             }}
-            className="text-win underline"
+            className="text-accent underline"
           >
             {isSignUp ? 'Se connecter' : "S'inscrire"}
           </button>

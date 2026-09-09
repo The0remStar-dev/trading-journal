@@ -2,32 +2,37 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   darkMode: ["class"],
-  content: [
-    "./src/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       colors: {
-        background: "#0B0E14",
-        surface: "#151921",
-        border: "#2A2F3D",
-        muted: "#9CA3AF",
-        foreground: "#E5E7EB",
+        background: "#EEEFF1",
+        surface: "#FFFFFF",
+        border: "#E2E8F0",
+        foreground: "#0F172A",
+        muted: "#475569",
+        subtle: "#94A3B8",
+        secondary: "#F1F5F9",
+        primary: "#0F172A",
+        success: "#059669",
+        danger: "#DC2626",
+        neutral: "#64748B",
         win: {
-          DEFAULT: "#10B981",
-          dim: "rgba(16, 185, 129, 0.12)",
+          DEFAULT: "#059669",
+          dim: "rgba(5, 150, 105, 0.08)",
         },
         loss: {
-          DEFAULT: "#EF4444",
-          dim: "rgba(239, 68, 68, 0.12)",
+          DEFAULT: "#DC2626",
+          dim: "rgba(220, 38, 38, 0.08)",
         },
+        neutralData: "#64748B",
         accent: {
-          DEFAULT: "#6366F1",
-          cyan: "#22D3EE",
+          DEFAULT: "#2563EB",
+          cyan: "#2563EB",
         },
       },
       borderRadius: {
-        lg: "0.75rem",
+        lg: "0.625rem",
         md: "0.5rem",
         sm: "0.375rem",
       },
@@ -36,7 +41,8 @@ const config: Config = {
         mono: ["var(--font-jbmono)", "monospace"],
       },
       boxShadow: {
-        glow: "0 0 0 1px rgba(16,185,129,0.15), 0 8px 30px rgba(16,185,129,0.08)",
+        card: "0 1px 2px 0 rgba(15, 23, 42, 0.04)",
+        glow: "0 0 0 1px rgba(37, 99, 235, 0.12)",
       },
       keyframes: {
         "fade-in": {
@@ -45,7 +51,7 @@ const config: Config = {
         },
       },
       animation: {
-        "fade-in": "fade-in 0.2s ease-out",
+        "fade-in": "fade-in 0.15s ease-out",
       },
     },
   },

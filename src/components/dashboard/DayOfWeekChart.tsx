@@ -15,7 +15,7 @@ interface DayPoint {
   total: number;
 }
 
-const BAR_COLORS = ["#10B981", "#22D3EE", "#6366F1", "#F59E0B", "#EF4444"];
+const BAR_COLORS = ["#2563EB", "#64748B", "#2563EB", "#64748B", "#2563EB"];
 
 export function DayOfWeekChart({ data }: { data: DayPoint[] }) {
   const chartData = data.map((d, i) => ({ ...d, fill: BAR_COLORS[i % BAR_COLORS.length] }));
@@ -24,7 +24,7 @@ export function DayOfWeekChart({ data }: { data: DayPoint[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm text-foreground">Win Rate by Day of Week</CardTitle>
+        <CardTitle className="text-sm text-foreground">Réussite par jour</CardTitle>
       </CardHeader>
       <CardContent className="h-72 pt-0">
         {!hasData ? (
@@ -40,12 +40,12 @@ export function DayOfWeekChart({ data }: { data: DayPoint[] }) {
               startAngle={90}
               endAngle={-270}
             >
-              <RadialBar background={{ fill: "#1C212C" }} dataKey="winRate" cornerRadius={6} />
+              <RadialBar background={{ fill: "#F1F5F9" }} dataKey="winRate" cornerRadius={4} />
               <Tooltip
                 contentStyle={{
-                  background: "#151921",
-                  border: "1px solid #2A2F3D",
-                  borderRadius: 8,
+                  background: "#FFFFFF",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: 6,
                   fontSize: 12,
                 }}
                 formatter={(value: number, _name, props) => [

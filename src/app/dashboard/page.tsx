@@ -46,7 +46,7 @@ export default function DashboardPage() {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted">Performance overview across all your trades.</p>
+          <p className="text-sm text-muted">Une vue claire de vos décisions et de vos résultats.</p>
         </div>
         <div className="flex gap-1 rounded-md border border-border bg-surface p-1">
           {RANGE_OPTIONS.map((opt) => (
@@ -57,7 +57,7 @@ export default function DashboardPage() {
               className={cn(range !== opt.key && "text-muted")}
               onClick={() => setRange(opt.key)}
             >
-              {opt.label}
+              {opt.key === "week" ? "Cette semaine" : opt.key === "month" ? "Ce mois" : "Depuis le début"}
             </Button>
           ))}
         </div>

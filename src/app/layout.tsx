@@ -7,13 +7,13 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jbmono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jbmono" });
 
 export const metadata: Metadata = {
-  title: "Trading Journal",
-  description: "A private, single-user trading journal and performance dashboard.",
+  title: "TradeShare",
+  description: "Analysez votre trading, partagez vos expériences et progressez.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jbmono.variable}`}>
+    <html lang="fr" className={`${inter.variable} ${jbmono.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
         <ToastProvider>{children}</ToastProvider>
       </body>

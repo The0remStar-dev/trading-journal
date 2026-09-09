@@ -8,44 +8,44 @@ export function KpiCards({ kpis }: { kpis: KpiSummary }) {
 
   const cards = [
     {
-      title: "Total Net PnL",
+      title: "PnL net total",
       value: formatCurrency(kpis.totalNetPnl),
       sub: formatPercent(kpis.totalNetPnlPercentage),
       icon: pnlPositive ? TrendingUp : TrendingDown,
       tone: pnlPositive ? "win" : "loss",
     },
     {
-      title: "Win Rate",
+      title: "Taux de réussite",
       value: formatPercent(kpis.winRate, 1),
-      sub: `${kpis.totalTrades} total trades`,
+      sub: `${kpis.totalTrades} trades au total`,
       icon: Target,
       tone: kpis.winRate >= 50 ? "win" : "loss",
     },
     {
-      title: "Profit Factor",
+      title: "Profit factor",
       value: Number.isFinite(kpis.profitFactor) ? kpis.profitFactor.toFixed(2) : "∞",
-      sub: kpis.profitFactor >= 1.5 ? "Strong edge" : "Watch drawdowns",
+      sub: kpis.profitFactor >= 1.5 ? "Avantage solide" : "Surveiller le drawdown",
       icon: Scale,
       tone: kpis.profitFactor >= 1 ? "win" : "loss",
     },
     {
-      title: "Avg Win / Avg Loss",
+      title: "Gain moyen / perte moyenne",
       value: `${formatCurrency(kpis.avgWin)} / ${formatCurrency(-kpis.avgLoss)}`,
-      sub: "per closed trade",
+      sub: "par trade clôturé",
       icon: Hash,
       tone: "neutral",
     },
     {
-      title: "Best Trade",
+      title: "Meilleur trade",
       value: formatCurrency(kpis.bestTrade),
-      sub: "single-trade high",
+      sub: "record sur un trade",
       icon: Trophy,
       tone: "win",
     },
     {
-      title: "Worst Trade",
+      title: "Pire trade",
       value: formatCurrency(kpis.worstTrade),
-      sub: "single-trade low",
+      sub: "plus forte perte",
       icon: Skull,
       tone: "loss",
     },
@@ -61,17 +61,17 @@ export function KpiCards({ kpis }: { kpis: KpiSummary }) {
               <card.icon
                 className={cn(
                   "h-4 w-4",
-                  card.tone === "win" && "text-win",
-                  card.tone === "loss" && "text-loss",
-                  card.tone === "neutral" && "text-accent-cyan"
+                  card.tone === "win" && "text-success",
+                  card.tone === "loss" && "text-danger",
+                  card.tone === "neutral" && "text-accent"
                 )}
               />
             </div>
             <p
               className={cn(
                 "text-mono-num text-xl font-semibold",
-                card.tone === "win" && "text-win",
-                card.tone === "loss" && "text-loss",
+                card.tone === "win" && "text-success",
+                card.tone === "loss" && "text-danger",
                 card.tone === "neutral" && "text-foreground"
               )}
             >

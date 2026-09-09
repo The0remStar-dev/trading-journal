@@ -8,12 +8,12 @@ export function TagPerformance({ data }: { data: TagPerformanceType[] }) {
   return (
     <Card className="col-span-2">
       <CardHeader>
-        <CardTitle className="text-sm text-foreground">Tag Performance</CardTitle>
+        <CardTitle className="text-sm text-foreground">Performance par tag</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         {data.length === 0 ? (
           <div className="flex h-40 items-center justify-center text-sm text-muted">
-            Tag your trades (e.g. FVG, BOS) to see strategy breakdowns here.
+            Ajoutez des tags à vos trades pour comparer vos stratégies.
           </div>
         ) : (
           <div className="flex flex-col gap-3">
