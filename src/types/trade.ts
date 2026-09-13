@@ -1,5 +1,6 @@
 export type AccountType = "LIVE" | "BACKTEST" | "EVALUATION";
 export type Direction = "LONG" | "SHORT";
+export type Timeframe = string;
 export type TradeStatus = "WIN" | "LOSS" | "BREAKEVEN" | "OPEN";
 
 export type TradeEmotion =
@@ -41,6 +42,11 @@ export interface Trade {
   pnl: number;
   pnlPercentage: number;
   riskRewardRatio: number | null;
+  rMultiple: number | null;
+  timeframe: string | null;
+  stopLoss: number | null;
+  planRespected: boolean | null;
+  stopMoved: boolean;
   status: TradeStatus;
   tags: string[];
   notes: string | null;

@@ -1,104 +1,120 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { AlertCircle } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
-import { KpiCards } from "@/components/dashboard/KpiCards";
-import { EquityCurveChart } from "@/components/dashboard/EquityCurveChart";
-import { DayOfWeekChart } from "@/components/dashboard/DayOfWeekChart";
-import { TagPerformance } from "@/components/dashboard/TagPerformance";
-import { Button } from "@/components/ui/button";
+import { WelcomeHeader } from "@/components/dashboard/WelcomeHeader";
+import { PerformanceStats } from "@/components/dashboard/PerformanceStats";
+import { ProgressionCard } from "@/components/dashboard/ProgressionCard";
+import { InsightCard } from "@/components/dashboard/InsightCard";
+import { EdgeCard } from "@/components/dashboard/EdgeCard";
+import { RecentTradesTable } from "@/components/dashboard/RecentTradesTable";
+import { ProgressionLevelCard } from "@/components/dashboard/ProgressionLevelCard";
+import { CommunityPreview } from "@/components/dashboard/CommunityPreview";
+import { DailyChecklist } from "@/components/dashboard/DailyChecklist";
+import { InsufficientDataBanner } from "@/components/dashboard/InsufficientDataBanner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { useAnalytics } from "@/lib/useAnalytics";
 import { useTrades } from "@/lib/useTrades";
-import {
-  computeKpis,
-  computeEquityCurve,
-  computeWinRateByDayOfWeek,
-  computeTagPerformance,
-} from "@/lib/calculations";
-import { cn } from "@/lib/utils";
-import { subDays, startOfWeek, startOfMonth, isAfter } from "date-fns";
-
-type RangeKey = "week" | "month" | "all" | "custom";
-
-const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
-  { key: "week", label: "This Week" },
-  { key: "month", label: "This Month" },
-  { key: "all", label: "All Time" },
-];
+import { useProfile } from "@/lib/useprofile";
+import { NotebookText } from "lucide-react";
+import type { PeriodPreset } from "@/types/analytics";
 
 export default function DashboardPage() {
-  const { trades, loading, error } = useTrades();
-  const [range, setRange] = useState<RangeKey>("all");
+  const { profile } = useProfile();
+  const { trades, loading: tradesLoading, error: tradesError } = useTrades();
 
-  const filteredTrades = useMemo(() => {
-    if (range === "all") return trades;
-    const now = new Date();
-    const cutoff = range === "week" ? startOfWeek(now) : startOfMonth(now);
-    return trades.filter((t) => isAfter(new Date(t.entryDate), cutoff));
-  }, [trades, range]);
+  const headerAnalytics = useAnalytics("week");
+  const [progressionRange, setProgressionRange] = useState<PeriodPreset>("30d");
+  const progressionAnalytics = useAnalytics(progressionRange);
 
-  const kpis = useMemo(() => computeKpis(filteredTrades), [filteredTrades]);
-  const equityCurve = useMemo(() => computeEquityCurve(filteredTrades), [filteredTrades]);
-  const dayOfWeek = useMemo(() => computeWinRateByDayOfWeek(filteredTrades), [filteredTrades]);
-  const tagPerf = useMemo(() => computeTagPerformance(filteredTrades), [filteredTrades]);
+  const firstName = profile?.fullName?.split(" ")[0] || profile?.username || "trader";
+
+  const hasAnyError = headerAnalytics.error || tradesError;
+  const hasNoTradesAtAll = !tradesLoading && trades.length === 0;
 
   return (
     <AppShell>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted">Une vue claire de vos décisions et de vos résultats.</p>
-        </div>
-        <div className="flex gap-1 rounded-md border border-border bg-surface p-1">
-          {RANGE_OPTIONS.map((opt) => (
-            <Button
-              key={opt.key}
-              size="sm"
-              variant={range === opt.key ? "default" : "ghost"}
-              className={cn(range !== opt.key && "text-muted")}
-              onClick={() => setRange(opt.key)}
-            >
-              {opt.key === "week" ? "Cette semaine" : opt.key === "month" ? "Ce mois" : "Depuis le début"}
-            </Button>
-          ))}
-        </div>
-      </div>
+      <WelcomeHeader
+        firstName={firstName}
+        period={headerAnalytics.preset}
+        onPeriodChange={headerAnalytics.setPreset}
+      />
 
-      {error && (
-        <div className="mb-4 rounded-md border border-loss/30 bg-loss-dim px-4 py-3 text-sm text-loss">
-          {error}
+      {hasAnyError && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-loss/30 bg-loss-dim px-4 py-3 text-sm text-loss">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {headerAnalytics.error ?? tradesError}
         </div>
       )}
 
-      {loading ? (
-        <DashboardSkeleton />
-      ) : (
-        <div className="flex flex-col gap-4">
-          <KpiCards kpis={kpis} />
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <EquityCurveChart data={equityCurve} />
-            <DayOfWeekChart data={dayOfWeek} />
-          </div>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <TagPerformance data={tagPerf} />
-          </div>
+      {hasNoTradesAtAll ? (
+        <div className="rounded-lg border border-border bg-surface">
+          <EmptyState
+            icon={NotebookText}
+            title="Pas encore de trades"
+            description="Ajoute ton premier trade pour commencer à voir tes performances."
+            className="py-16"
+          />
         </div>
+      ) : (
+        <>
+          {headerAnalytics.data && (
+            <InsufficientDataBanner closedTrades={headerAnalytics.data.global.closedTrades} />
+          )}
+
+          {headerAnalytics.loading || !headerAnalytics.data ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-24" />
+              ))}
+            </div>
+          ) : (
+            <PerformanceStats global={headerAnalytics.data.global} />
+          )}
+
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <ProgressionCard
+                data={progressionAnalytics.data?.equityCurve ?? []}
+                loading={progressionAnalytics.loading}
+                range={progressionRange}
+                onRangeChange={(v) => {
+                  setProgressionRange(v);
+                  progressionAnalytics.setPreset(v);
+                }}
+              />
+            </div>
+            {headerAnalytics.data ? (
+              <InsightCard patterns={headerAnalytics.data.patterns} />
+            ) : (
+              <Skeleton className="h-full min-h-[200px]" />
+            )}
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            {headerAnalytics.data ? (
+              <EdgeCard
+                byTag={headerAnalytics.data.byTag}
+                byInstrument={headerAnalytics.data.byInstrument}
+                bySession={headerAnalytics.data.bySession}
+              />
+            ) : (
+              <Skeleton className="h-56" />
+            )}
+            <div className="lg:col-span-2">
+              <RecentTradesTable trades={trades} />
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <ProgressionLevelCard trades={trades} global={headerAnalytics.data?.global ?? null} />
+            <CommunityPreview />
+            <DailyChecklist trades={trades} />
+          </div>
+        </>
       )}
     </AppShell>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="flex flex-col gap-4 animate-pulse">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-24 rounded-lg border border-border bg-surface" />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="h-72 rounded-lg border border-border bg-surface lg:col-span-2" />
-        <div className="h-72 rounded-lg border border-border bg-surface" />
-      </div>
-    </div>
   );
 }
