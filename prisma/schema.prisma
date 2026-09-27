@@ -18,19 +18,32 @@ model Trade {
   exitDate        DateTime?
   entryPrice      Float
   exitPrice       Float?
+  stopLoss        Float?
+  takeProfit      Float?
   positionSize    Float
   fees            Float         @default(0)
   pnl             Float         @default(0)
   pnlPercentage   Float         @default(0)
   riskRewardRatio Float?
+  riskAmount      Float?
+  rMultiple       Float?
   status          TradeStatus   @default(OPEN)
   tags            String        @default("[]")
+  timeframe       Timeframe?
+  setupQuality    Float?
+  planRespected   Boolean?
+  stopMoved       Boolean       @default(false)
+  tpMoved         Boolean       @default(false)
+  errorType       String?
   notes           String?
   beforeImageUrl  String?
   afterImageUrl   String?
   emotion         TradeEmotion?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  
+  mistake String?
+  lesson  String?
 
   @@index([userId])
   @@index([entryDate])
@@ -55,6 +68,18 @@ enum TradeStatus {
   LOSS
   BREAKEVEN
   OPEN
+}
+
+enum Timeframe {
+  M1
+  M5
+  M15
+  M30
+  H1
+  H4
+  D1
+  W1
+  OTHER
 }
 
 enum ExperienceLevel {
@@ -141,3 +166,5 @@ model Post {
   @@index([userId])
   @@index([createdAt])
 }
+
+

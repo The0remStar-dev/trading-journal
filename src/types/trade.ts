@@ -1,19 +1,11 @@
 export type AccountType = "LIVE" | "BACKTEST" | "EVALUATION";
 export type Direction = "LONG" | "SHORT";
-export type Timeframe = string;
 export type TradeStatus = "WIN" | "LOSS" | "BREAKEVEN" | "OPEN";
+export type Timeframe = "M1" | "M5" | "M15" | "M30" | "H1" | "H4" | "D1" | "W1" | "OTHER";
 
-export const TIMEFRAME_LABELS: Record<string, string> = {
-  "1m": "1m",
-  "5m": "5m",
-  "15m": "15m",
-  "30m": "30m",
-  "1h": "1h",
-  "4h": "4h",
-  "1D": "1D",
-  "1W": "1W",
-  "1M": "1M",
-};
+// Possédé ici (plutôt que dans types/analytics.ts) car c'est un attribut
+// dérivé du trade lui-même ; analytics.ts le ré-exporte pour compatibilité.
+export type SessionName = "Asie" | "Londres" | "New York" | "Autres";
 
 export type TradeEmotion =
   | "FOMO"
@@ -40,6 +32,18 @@ export const EMOTION_LABELS: Record<TradeEmotion, string> = {
   NEUTRAL: "Neutre",
 };
 
+export const TIMEFRAME_LABELS: Record<Timeframe, string> = {
+  M1: "1 min",
+  M5: "5 min",
+  M15: "15 min",
+  M30: "30 min",
+  H1: "1 heure",
+  H4: "4 heures",
+  D1: "Journalier",
+  W1: "Hebdomadaire",
+  OTHER: "Autre",
+};
+
 export interface Trade {
   id: string;
   accountType: AccountType;
@@ -49,18 +53,26 @@ export interface Trade {
   exitDate: string | null;
   entryPrice: number;
   exitPrice: number | null;
+  stopLoss: number | null;
+  takeProfit: number | null;
   positionSize: number;
   fees: number;
   pnl: number;
   pnlPercentage: number;
   riskRewardRatio: number | null;
+  riskAmount: number | null;
   rMultiple: number | null;
-  timeframe: string | null;
-  stopLoss: number | null;
-  planRespected: boolean | null;
-  stopMoved: boolean;
   status: TradeStatus;
   tags: string[];
+  timeframe: Timeframe | null;
+  session: SessionName; // calculé à la sérialisation, jamais stocké
+  setupQuality: number | null;
+  planRespected: boolean | null;
+  stopMoved: boolean;
+  tpMoved: boolean;
+  errorType: string | null;
+  mistake: string | null;
+  lesson: string | null;
   notes: string | null;
   emotion: TradeEmotion | null;
   beforeImageUrl: string | null;
@@ -77,10 +89,20 @@ export interface TradeInput {
   exitDate: string | null;
   entryPrice: number;
   exitPrice: number | null;
+  stopLoss: number | null;
+  takeProfit: number | null;
   positionSize: number;
   fees: number;
   riskRewardRatio: number | null;
   tags: string[];
+  timeframe: Timeframe | null;
+  setupQuality: number | null;
+  planRespected: boolean | null;
+  stopMoved: boolean;
+  tpMoved: boolean;
+  errorType: string | null;
+  mistake: string | null;
+  lesson: string | null;
   notes: string | null;
   emotion: TradeEmotion | null;
   beforeImageUrl: string | null;
@@ -95,5 +117,4 @@ export interface TradeFilters {
   status?: TradeStatus | "ALL";
   accountType?: AccountType | "ALL";
   tags?: string[];
-  emotion?: TradeEmotion | "ALL";
 }

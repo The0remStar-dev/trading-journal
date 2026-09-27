@@ -5,14 +5,48 @@ export interface RMultipleContext {
   riskPerTradePercent: number | null;
 }
 
-/** Montant correspondant à 1R, déduit du capital initial et du % de risque par trade. */
 export function computeRiskAmount(ctx: RMultipleContext): number | null {
   if (!ctx.initialCapital || !ctx.riskPerTradePercent) return null;
   const amount = ctx.initialCapital * (ctx.riskPerTradePercent / 100);
   return amount > 0 ? amount : null;
 }
 
-/** Convertit le PnL d'un trade clôturé en multiple de R. */
+/**
+ * Détermine le risque réellement utilisé pour normaliser un trade en R.
+ *
+ * Priorité :
+ * 1. Risque planifié réel : |entrée - stop| × taille de position, si un
+ *    Stop Loss est renseigné. C'est la définition la plus fidèle du "risque
+ *    pris sur ce trade précis".
+ * 2. Repli : montant de risque du profil (capital × % de risque), pour les
+ *    trades sans Stop Loss renseigné.
+ *
+ * riskAmount est toujours strictement positif quand il existe, ce qui
+ * garantit que rMultiple (= pnl / riskAmount) a toujours le même signe que
+ * pnl — élimine structurellement toute incohérence "PnL positif, R négatif".
+ */
+export function computeTradeRiskAmount(params: {
+  entryPrice: number;
+  stopLoss: number | null;
+  positionSize: number;
+  fallbackRiskAmount: number | null;
+}): { riskAmount: number | null; source: "stop" | "capital_fallback" | "unavailable" } {
+  const { entryPrice, stopLoss, positionSize, fallbackRiskAmount } = params;
+
+  if (stopLoss !== null && positionSize > 0) {
+    const diff = Math.abs(entryPrice - stopLoss);
+    if (diff > 0) {
+      return { riskAmount: diff * positionSize, source: "stop" };
+    }
+  }
+
+  if (fallbackRiskAmount !== null && fallbackRiskAmount > 0) {
+    return { riskAmount: fallbackRiskAmount, source: "capital_fallback" };
+  }
+
+  return { riskAmount: null, source: "unavailable" };
+}
+
 export function tradeToR(pnl: number, isOpen: boolean, riskAmount: number | null): number | null {
   if (isOpen || riskAmount === null) return null;
   return pnl / riskAmount;
@@ -24,7 +58,6 @@ export interface GroupedRPerformance {
   totalTrades: number;
 }
 
-/** Regroupe et somme les R par clé arbitraire (tag, symbole, émotion...). */
 function groupByR(
   trades: Trade[],
   riskAmount: number | null,

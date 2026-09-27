@@ -1,4 +1,5 @@
-import type { Direction, Timeframe, TradeStatus } from "@/types/trade";
+import type { Direction, SessionName, Timeframe, TradeStatus } from "@/types/trade";
+export type { SessionName } from "@/types/trade";
 
 export type PeriodPreset = "today" | "week" | "month" | "7d" | "30d" | "90d" | "year" | "all" | "custom";
 
@@ -52,8 +53,6 @@ export interface EquityPointR {
   cumulativeR: number;
   tradeR: number;
 }
-
-export type SessionName = "Asie" | "Londres" | "New York" | "Autres";
 
 export interface RiskAnalysis {
   avgRiskRatio: number | null;
