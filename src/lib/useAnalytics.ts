@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AnalyticsResponse, PeriodPreset, SessionName } from "@/types/analytics";
-import type { Direction, Timeframe } from "@/types/trade";
+import type { Direction, Timeframe, TradeStatus } from "@/types/trade";
 
 export interface AnalyticsFilterState {
   instrument: string | null;
@@ -10,21 +10,23 @@ export interface AnalyticsFilterState {
   session: SessionName | null;
   timeframe: Timeframe | null;
   direction: Direction | null;
+  result: TradeStatus | null;
 }
 
-const EMPTY_FILTERS: AnalyticsFilterState = {
+export const EMPTY_ANALYTICS_FILTERS: AnalyticsFilterState = {
   instrument: null,
   setup: null,
   session: null,
   timeframe: null,
   direction: null,
+  result: null,
 };
 
 export function useAnalytics(initialPreset: PeriodPreset = "30d") {
   const [preset, setPreset] = useState<PeriodPreset>(initialPreset);
   const [customFrom, setCustomFrom] = useState<string | null>(null);
   const [customTo, setCustomTo] = useState<string | null>(null);
-  const [filters, setFilters] = useState<AnalyticsFilterState>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<AnalyticsFilterState>(EMPTY_ANALYTICS_FILTERS);
   const [data, setData] = useState<AnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export function useAnalytics(initialPreset: PeriodPreset = "30d") {
       if (filters.session) params.set("session", filters.session);
       if (filters.timeframe) params.set("timeframe", filters.timeframe);
       if (filters.direction) params.set("direction", filters.direction);
+      if (filters.result) params.set("result", filters.result);
 
       const res = await fetch(`/api/stats/analytics?${params.toString()}`, { cache: "no-store" });
       if (!res.ok) {
@@ -62,6 +65,10 @@ export function useAnalytics(initialPreset: PeriodPreset = "30d") {
     fetchData();
   }, [fetchData]);
 
+  function resetFilters() {
+    setFilters(EMPTY_ANALYTICS_FILTERS);
+  }
+
   return {
     data,
     loading,
@@ -74,6 +81,7 @@ export function useAnalytics(initialPreset: PeriodPreset = "30d") {
     setCustomTo,
     filters,
     setFilters,
+    resetFilters,
     refetch: fetchData,
   };
 }

@@ -3,6 +3,18 @@ export type Direction = "LONG" | "SHORT";
 export type Timeframe = string;
 export type TradeStatus = "WIN" | "LOSS" | "BREAKEVEN" | "OPEN";
 
+export const TIMEFRAME_LABELS: Record<string, string> = {
+  "1m": "1m",
+  "5m": "5m",
+  "15m": "15m",
+  "30m": "30m",
+  "1h": "1h",
+  "4h": "4h",
+  "1D": "1D",
+  "1W": "1W",
+  "1M": "1M",
+};
+
 export type TradeEmotion =
   | "FOMO"
   | "REVENGE"

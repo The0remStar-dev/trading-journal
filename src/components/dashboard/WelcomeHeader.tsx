@@ -17,7 +17,7 @@ export function WelcomeHeader({ firstName, period, onPeriodChange }: WelcomeHead
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Bonjour {firstName} 👋</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Bonjour {firstName}</h1>
         <p className="mt-1 text-sm text-muted">Voici comment se passe ton trading.</p>
       </div>
       <Select value={period} onValueChange={(v) => onPeriodChange(v as PeriodPreset)}>

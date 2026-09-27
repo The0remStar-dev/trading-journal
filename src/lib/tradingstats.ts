@@ -8,10 +8,15 @@ import {
   computeByTag,
   computeBySession,
   computeByTimeframe,
+  computeByDirection,
+  computeByDayOfWeek,
   computeEquityCurveR,
   computeHourlyHeatmap,
+  computeRDistribution,
+  computeStreakDistribution,
   computeRiskAnalysis,
   detectBehavioralPatterns,
+  computeInsightSummaries,
   deriveSession,
 } from "@/lib/analytics";
 import type { AnalyticsResponse, PeriodPreset, TradingStatsFilters } from "@/types/analytics";
@@ -73,6 +78,8 @@ export async function getUserTradingStats(
       : {}),
     ...(filters.instrument ? { symbol: { contains: filters.instrument.toUpperCase() } } : {}),
     ...(filters.direction ? { direction: filters.direction } : {}),
+    ...(filters.timeframe ? { timeframe: filters.timeframe } : {}),
+    ...(filters.result ? { status: filters.result } : {}),
   };
 
   const [profile, tradeRows] = await Promise.all([
@@ -105,9 +112,14 @@ export async function getUserTradingStats(
     byTag: computeByTag(trades, fallbackRiskAmount),
     bySession: computeBySession(trades, fallbackRiskAmount),
     byTimeframe: computeByTimeframe(trades, fallbackRiskAmount),
+    byDirection: computeByDirection(trades, fallbackRiskAmount),
+    byDayOfWeek: computeByDayOfWeek(trades, fallbackRiskAmount),
     equityCurve: computeEquityCurveR(trades, fallbackRiskAmount),
     hourlyHeatmap: computeHourlyHeatmap(trades, fallbackRiskAmount),
+    rDistribution: computeRDistribution(trades, fallbackRiskAmount),
+    streakDistribution: computeStreakDistribution(trades, fallbackRiskAmount),
     risk: computeRiskAnalysis(trades, fallbackRiskAmount),
     patterns: detectBehavioralPatterns(trades, fallbackRiskAmount),
+    insightSummaries: computeInsightSummaries(trades, fallbackRiskAmount),
   };
 }

@@ -7,10 +7,15 @@ import type {
   RiskAnalysis,
   BehavioralPattern,
   TradeExtreme,
+  HeatmapCell,
+  RDistributionBucket,
+  StreakDistribution,
+  InsightSummary,
+  InsightCategory,
 } from "@/types/analytics";
 import { computeRiskAmount, tradeToR } from "@/lib/rMultiple";
 
-const MIN_SAMPLE_SIZE = 5;
+export const MIN_SAMPLE_SIZE = 5; // en dessous, on ne tire aucune conclusion statistique
 
 function effectiveR(trade: Trade, fallbackRiskAmount: number | null): number | null {
   if (trade.rMultiple !== null) return trade.rMultiple;
@@ -22,6 +27,8 @@ function isClosed(trade: Trade): boolean {
   return trade.status !== "OPEN";
 }
 
+// --- Performance globale ----------------------------------------------------
+
 export function computeGlobalPerformance(trades: Trade[], fallbackRiskAmount: number | null): GlobalPerformance {
   const closed = trades.filter(isClosed);
   const rValues = closed
@@ -32,6 +39,14 @@ export function computeGlobalPerformance(trades: Trade[], fallbackRiskAmount: nu
 
   const wins = rValues.filter((x) => x.r > 0);
   const losses = rValues.filter((x) => x.r < 0);
+
+  // Comptages basés sur le statut (source de vérité déjà figée à l'enregistrement
+  // du trade), plutôt que sur le signe du R, pour rester cohérent avec les
+  // badges affichés ailleurs (StatusBadge) — un WIN à R≈0 reste un WIN, pas un
+  // breakeven, si c'est ce que deriveStatus() a tranché au moment du save.
+  const winningTrades = closed.filter((t) => t.status === "WIN").length;
+  const losingTrades = closed.filter((t) => t.status === "LOSS").length;
+  const breakevenTrades = closed.filter((t) => t.status === "BREAKEVEN").length;
 
   const totalR = Number(rValues.reduce((sum, x) => sum + x.r, 0).toFixed(2));
   const avgR = rValues.length ? Number((totalR / rValues.length).toFixed(2)) : 0;
@@ -102,7 +117,6 @@ export function computeGlobalPerformance(trades: Trade[], fallbackRiskAmount: nu
     if (!worstDay || dayTotalR < worstDay.totalR) worstDay = { date, totalR: Number(dayTotalR.toFixed(2)) };
   }
 
-  // Meilleur / pire trade individuel (distinct de la meilleure/pire journée).
   let bestTrade: TradeExtreme | null = null;
   let worstTrade: TradeExtreme | null = null;
   for (const x of rValues) {
@@ -127,6 +141,9 @@ export function computeGlobalPerformance(trades: Trade[], fallbackRiskAmount: nu
     recoveryFactor,
     totalTrades: trades.length,
     closedTrades: closed.length,
+    winningTrades,
+    losingTrades,
+    breakevenTrades,
     bestWinStreak,
     worstLossStreak,
     bestDay,
@@ -136,6 +153,8 @@ export function computeGlobalPerformance(trades: Trade[], fallbackRiskAmount: nu
     tradesMissingRiskData,
   };
 }
+
+// --- Répartitions génériques (instrument, tag, session, timeframe, direction) ---
 
 function buildBreakdown(
   trades: Trade[],
@@ -181,6 +200,47 @@ export function computeByTimeframe(trades: Trade[], fallbackRiskAmount: number |
   return buildBreakdown(trades, fallbackRiskAmount, (t) => (t.timeframe ? [t.timeframe] : []));
 }
 
+export function computeByDirection(trades: Trade[], fallbackRiskAmount: number | null): BreakdownEntry[] {
+  return buildBreakdown(trades, fallbackRiskAmount, (t) => [t.direction]);
+}
+
+const DAY_LABELS = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Lundi -> Dimanche pour l'affichage
+
+/**
+ * Performance par jour de semaine, dans l'ordre chronologique de la semaine
+ * (Lun -> Dim), contrairement aux autres breakdowns triés par performance.
+ */
+export function computeByDayOfWeek(trades: Trade[], fallbackRiskAmount: number | null): BreakdownEntry[] {
+  const buckets = new Map<number, { totalR: number; wins: number; total: number }>();
+
+  for (const trade of trades) {
+    if (!isClosed(trade)) continue;
+    const r = effectiveR(trade, fallbackRiskAmount);
+    if (r === null) continue;
+
+    const day = new Date(trade.entryDate).getUTCDay();
+    const entry = buckets.get(day) ?? { totalR: 0, wins: 0, total: 0 };
+    entry.totalR += r;
+    entry.total += 1;
+    if (r > 0) entry.wins += 1;
+    buckets.set(day, entry);
+  }
+
+  return DAY_ORDER.map((day) => {
+    const v = buckets.get(day);
+    return {
+      key: DAY_LABELS[day],
+      totalR: v ? Number(v.totalR.toFixed(2)) : 0,
+      avgR: v ? Number((v.totalR / v.total).toFixed(2)) : 0,
+      winRate: v ? Number(((v.wins / v.total) * 100).toFixed(1)) : 0,
+      totalTrades: v ? v.total : 0,
+    };
+  });
+}
+
+// --- Session (dérivée de l'heure UTC d'entrée) ------------------------------
+
 export function deriveSession(entryDate: string): SessionName {
   const hour = new Date(entryDate).getUTCHours();
   if (hour >= 0 && hour < 7) return "Asie";
@@ -192,6 +252,8 @@ export function deriveSession(entryDate: string): SessionName {
 export function computeBySession(trades: Trade[], fallbackRiskAmount: number | null): BreakdownEntry[] {
   return buildBreakdown(trades, fallbackRiskAmount, (t) => [deriveSession(t.entryDate)]);
 }
+
+// --- Equity curve en R -------------------------------------------------------
 
 export function computeEquityCurveR(trades: Trade[], fallbackRiskAmount: number | null): EquityPointR[] {
   const closed = trades
@@ -211,8 +273,10 @@ export function computeEquityCurveR(trades: Trade[], fallbackRiskAmount: number 
   });
 }
 
-export function computeHourlyHeatmap(trades: Trade[], fallbackRiskAmount: number | null) {
-  const buckets = new Map<string, { totalR: number; total: number }>();
+// --- Heatmap heure x jour de semaine (avec winRate par cellule) -------------
+
+export function computeHourlyHeatmap(trades: Trade[], fallbackRiskAmount: number | null): HeatmapCell[] {
+  const buckets = new Map<string, { totalR: number; wins: number; total: number }>();
 
   for (const trade of trades) {
     if (!isClosed(trade)) continue;
@@ -221,9 +285,10 @@ export function computeHourlyHeatmap(trades: Trade[], fallbackRiskAmount: number
 
     const date = new Date(trade.entryDate);
     const key = `${date.getUTCDay()}-${date.getUTCHours()}`;
-    const entry = buckets.get(key) ?? { totalR: 0, total: 0 };
+    const entry = buckets.get(key) ?? { totalR: 0, wins: 0, total: 0 };
     entry.totalR += r;
     entry.total += 1;
+    if (r > 0) entry.wins += 1;
     buckets.set(key, entry);
   }
 
@@ -234,9 +299,130 @@ export function computeHourlyHeatmap(trades: Trade[], fallbackRiskAmount: number
       hour,
       avgR: Number((v.totalR / v.total).toFixed(2)),
       totalTrades: v.total,
+      winRate: Number(((v.wins / v.total) * 100).toFixed(1)),
     };
   });
 }
+
+// --- Distribution des R -------------------------------------------------------
+
+const R_BUCKETS: { label: string; min: number; max: number }[] = [
+  { label: "< -3R", min: -Infinity, max: -3 },
+  { label: "-3R à -2R", min: -3, max: -2 },
+  { label: "-2R à -1R", min: -2, max: -1 },
+  { label: "-1R à 0R", min: -1, max: 0 },
+  { label: "0R à 1R", min: 0, max: 1 },
+  { label: "1R à 2R", min: 1, max: 2 },
+  { label: "2R à 3R", min: 2, max: 3 },
+  { label: "> 3R", min: 3, max: Infinity },
+];
+
+export function computeRDistribution(trades: Trade[], fallbackRiskAmount: number | null): RDistributionBucket[] {
+  const counts = R_BUCKETS.map(() => 0);
+
+  for (const trade of trades) {
+    if (!isClosed(trade)) continue;
+    const r = effectiveR(trade, fallbackRiskAmount);
+    if (r === null) continue;
+
+    const idx = R_BUCKETS.findIndex((b) => r >= b.min && r < b.max) ;
+    const finalIdx = idx === -1 ? R_BUCKETS.length - 1 : idx;
+    counts[finalIdx] += 1;
+  }
+
+  return R_BUCKETS.map((b, i) => ({
+    bucket: b.label,
+    count: counts[i],
+    isPositive: b.min >= 0,
+  }));
+}
+
+// --- Distribution des séries de gains / pertes -------------------------------
+
+export function computeStreakDistribution(trades: Trade[], fallbackRiskAmount: number | null): StreakDistribution {
+  const closed = trades.filter(isClosed);
+  const rValues = closed
+    .map((t) => ({ trade: t, r: effectiveR(t, fallbackRiskAmount) }))
+    .filter((x): x is { trade: Trade; r: number } => x.r !== null)
+    .sort((a, b) => new Date(a.trade.entryDate).getTime() - new Date(b.trade.entryDate).getTime());
+
+  const winLengths = new Map<number, number>();
+  const lossLengths = new Map<number, number>();
+
+  let currentStreak = 0;
+  let currentIsWin: boolean | null = null;
+
+  function flush() {
+    if (currentStreak === 0 || currentIsWin === null) return;
+    const map = currentIsWin ? winLengths : lossLengths;
+    map.set(currentStreak, (map.get(currentStreak) ?? 0) + 1);
+  }
+
+  for (const x of rValues) {
+    const isWin = x.r > 0;
+    if (currentIsWin === isWin) {
+      currentStreak += 1;
+    } else {
+      flush();
+      currentStreak = 1;
+      currentIsWin = isWin;
+    }
+  }
+  flush();
+
+  const toSortedArray = (map: Map<number, number>) =>
+    Array.from(map.entries())
+      .map(([length, count]) => ({ length, count }))
+      .sort((a, b) => a.length - b.length);
+
+  return {
+    winStreaks: toSortedArray(winLengths),
+    lossStreaks: toSortedArray(lossLengths),
+  };
+}
+
+// --- Résumés statistiques neutres (distincts des alertes comportementales) --
+
+/**
+ * Génère des constats statistiques neutres pour les catégories les plus
+ * représentées (setup, instrument, session), avec formulation prudente.
+ * Se distingue de detectBehavioralPatterns() qui, lui, signale des
+ * comportements à risque — ici on décrit factuellement la répartition.
+ */
+export function computeInsightSummaries(trades: Trade[], fallbackRiskAmount: number | null): InsightSummary[] {
+  const categories: { category: InsightCategory; entries: BreakdownEntry[] }[] = [
+    { category: "setup", entries: computeByTag(trades, fallbackRiskAmount) },
+    { category: "instrument", entries: computeByInstrument(trades, fallbackRiskAmount) },
+    { category: "session", entries: computeBySession(trades, fallbackRiskAmount) },
+  ];
+
+  return categories.map(({ category, entries }) => {
+    const eligible = entries.filter((e) => e.totalTrades >= MIN_SAMPLE_SIZE);
+    const top = eligible.sort((a, b) => b.totalTrades - a.totalTrades)[0];
+
+    if (!top) {
+      return {
+        category,
+        label: null,
+        totalTrades: 0,
+        totalR: 0,
+        winRate: 0,
+        insufficientData: true,
+      };
+    }
+
+    return {
+      category,
+      label: top.key,
+      totalTrades: top.totalTrades,
+      totalR: top.totalR,
+      winRate: top.winRate,
+      insufficientData: false,
+    };
+  });
+}
+
+// --- Analyse du risque --------------------------------------------------------
 
 function plannedRiskUnits(trade: Trade): number | null {
   if (trade.stopLoss === null) return null;
@@ -315,6 +501,8 @@ export function computeRiskAnalysis(trades: Trade[], fallbackRiskAmount: number 
     behaviorAfterLoss,
   };
 }
+
+// --- Détection comportementale (règles, formulations prudentes) -------------
 
 export function detectBehavioralPatterns(
   trades: Trade[],

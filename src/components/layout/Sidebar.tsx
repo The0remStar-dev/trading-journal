@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Users,
   NotebookText,
+  ChartColumn,
   CalendarClock,
   Settings,
   Calculator,
@@ -23,6 +24,7 @@ const MAIN_NAV_ITEMS = [
   { href: "/dashboard", label: "Accueil", icon: LayoutDashboard },
   { href: "/feed", label: "Communauté", icon: Users },
   { href: "/trades", label: "Journal", icon: NotebookText },
+  { href: "/analytics", label: "Analytics", icon: ChartColumn },
   { href: "/monthly", label: "Rétrospective Mensuelle", icon: CalendarClock },
   { href: "/settings", label: "Profil & Paramètres", icon: Settings },
 ];

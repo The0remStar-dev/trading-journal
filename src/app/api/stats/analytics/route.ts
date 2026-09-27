@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUserTradingStats } from "@/lib/tradingstats";
 import type { PeriodPreset, SessionName, TradingStatsFilters } from "@/types/analytics";
-import type { Direction, Timeframe } from "@/types/trade";
+import type { Direction, Timeframe, TradeStatus } from "@/types/trade";
 
-// GET /api/stats/analytics?preset=30d&from=&to=&instrument=&setup=&session=&timeframe=&direction=
+// GET /api/stats/analytics?preset=&from=&to=&instrument=&setup=&session=&timeframe=&direction=&result=
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     session: (searchParams.get("session") as SessionName | null) ?? null,
     timeframe: (searchParams.get("timeframe") as Timeframe | null) ?? null,
     direction: (searchParams.get("direction") as Direction | null) ?? null,
+    result: (searchParams.get("result") as TradeStatus | null) ?? null,
   };
 
   try {

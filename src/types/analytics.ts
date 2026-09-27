@@ -1,4 +1,4 @@
-import type { Direction, Timeframe } from "@/types/trade";
+import type { Direction, Timeframe, TradeStatus } from "@/types/trade";
 
 export type PeriodPreset = "today" | "week" | "month" | "7d" | "30d" | "90d" | "year" | "all" | "custom";
 
@@ -27,6 +27,9 @@ export interface GlobalPerformance {
   recoveryFactor: number | null;
   totalTrades: number;
   closedTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  breakevenTrades: number;
   bestWinStreak: { count: number; totalR: number };
   worstLossStreak: { count: number; totalR: number };
   bestDay: { date: string; totalR: number } | null;
@@ -69,6 +72,41 @@ export interface BehavioralPattern {
   occurrences?: number;
 }
 
+export interface HeatmapCell {
+  hour: number;
+  dayOfWeek: number;
+  avgR: number;
+  totalTrades: number;
+  winRate: number;
+}
+
+export interface RDistributionBucket {
+  bucket: string;
+  count: number;
+  isPositive: boolean;
+}
+
+export interface StreakLengthCount {
+  length: number;
+  count: number;
+}
+
+export interface StreakDistribution {
+  winStreaks: StreakLengthCount[];
+  lossStreaks: StreakLengthCount[];
+}
+
+export type InsightCategory = "setup" | "instrument" | "session";
+
+export interface InsightSummary {
+  category: InsightCategory;
+  label: string | null;
+  totalTrades: number;
+  totalR: number;
+  winRate: number;
+  insufficientData: boolean;
+}
+
 // Filtres supportés par le service centralisé getUserTradingStats.
 export interface TradingStatsFilters {
   preset: PeriodPreset;
@@ -79,6 +117,7 @@ export interface TradingStatsFilters {
   session?: SessionName | null;
   timeframe?: Timeframe | null;
   direction?: Direction | null;
+  result?: TradeStatus | null;
 }
 
 export interface AnalyticsResponse {
@@ -88,8 +127,13 @@ export interface AnalyticsResponse {
   byTag: BreakdownEntry[];
   bySession: BreakdownEntry[];
   byTimeframe: BreakdownEntry[];
+  byDirection: BreakdownEntry[];
+  byDayOfWeek: BreakdownEntry[];
   equityCurve: EquityPointR[];
-  hourlyHeatmap: { hour: number; dayOfWeek: number; avgR: number; totalTrades: number }[];
+  hourlyHeatmap: HeatmapCell[];
+  rDistribution: RDistributionBucket[];
+  streakDistribution: StreakDistribution;
   risk: RiskAnalysis;
   patterns: BehavioralPattern[];
+  insightSummaries: InsightSummary[];
 }
