@@ -6,10 +6,7 @@ import type { ProfileInput } from "@/types/profile";
 
 export async function GET() {
   const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
@@ -21,10 +18,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
@@ -33,16 +27,10 @@ export async function PUT(request: NextRequest) {
   const body = (await request.json()) as ProfileInput;
 
   if (!body.username || body.username.trim().length < 3) {
-    return NextResponse.json(
-      { error: "Le nom d'utilisateur doit contenir au moins 3 caractères." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Le nom d'utilisateur doit contenir au moins 3 caractères." }, { status: 400 });
   }
   if (body.initialCapital !== null && (isNaN(body.initialCapital) || body.initialCapital <= 0)) {
-    return NextResponse.json(
-      { error: "Le capital initial doit être un nombre positif." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Le capital initial doit être un nombre positif." }, { status: 400 });
   }
   if (
     body.riskPerTradePercent === undefined ||
@@ -50,10 +38,7 @@ export async function PUT(request: NextRequest) {
     body.riskPerTradePercent <= 0 ||
     body.riskPerTradePercent > 100
   ) {
-    return NextResponse.json(
-      { error: "Le risque par trade doit être un pourcentage entre 0 et 100." },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Le risque par trade doit être un pourcentage entre 0 et 100." }, { status: 400 });
   }
 
   await ensureProfile(user.id, user.email);
@@ -69,6 +54,7 @@ export async function PUT(request: NextRequest) {
         initialCapital: body.initialCapital,
         riskPerTradePercent: body.riskPerTradePercent,
         language: body.language,
+        isPrivate: body.isPrivate ?? false,
       },
     });
 

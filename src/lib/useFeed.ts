@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import type { Post } from "@/types/post";
+import { useCallback, useEffect, useState } from "react";
+import type { Post, FeedType } from "@/types/post";
 
-export function usePostFeed() {
+export function useFeed(feedType: FeedType) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingInitial, setLoadingInitial] = useState(true);
@@ -14,7 +14,7 @@ export function usePostFeed() {
     setLoadingInitial(true);
     setError(null);
     try {
-      const res = await fetch("/api/posts", { cache: "no-store" });
+      const res = await fetch(`/api/posts?feed=${feedType}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Impossible de charger le fil d'actualité.");
       const data = await res.json();
       setPosts(data.posts);
@@ -24,13 +24,13 @@ export function usePostFeed() {
     } finally {
       setLoadingInitial(false);
     }
-  }, []);
+  }, [feedType]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
-      const res = await fetch(`/api/posts?cursor=${nextCursor}`, { cache: "no-store" });
+      const res = await fetch(`/api/posts?feed=${feedType}&cursor=${nextCursor}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Impossible de charger plus de publications.");
       const data = await res.json();
       setPosts((prev) => [...prev, ...data.posts]);
@@ -40,11 +40,34 @@ export function usePostFeed() {
     } finally {
       setLoadingMore(false);
     }
-  }, [nextCursor, loadingMore]);
+  }, [feedType, nextCursor, loadingMore]);
 
-  const prependPost = useCallback((post: Post) => {
+  useEffect(() => {
+    loadInitial();
+  }, [loadInitial]);
+
+  function prependPost(post: Post) {
     setPosts((prev) => [post, ...prev]);
-  }, []);
+  }
 
-  return { posts, nextCursor, loadingInitial, loadingMore, error, loadInitial, loadMore, prependPost };
+  function removePost(postId: string) {
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+  }
+
+  function patchPost(postId: string, patch: Partial<Post>) {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, ...patch } : p)));
+  }
+
+  return {
+    posts,
+    nextCursor,
+    loadingInitial,
+    loadingMore,
+    error,
+    loadInitial,
+    loadMore,
+    prependPost,
+    removePost,
+    patchPost,
+  };
 }

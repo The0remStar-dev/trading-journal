@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
-import { serializePost } from "@/lib/serializePost";
+import { serializePost, postInclude } from "@/lib/serializePost";
+import { getFollowingIds } from "@/lib/community/visibility";
+import { getFeed } from "@/lib/community/feed";
+import { validatePostInput } from "@/lib/validation/postValidation";
 import { computeRiskAmount, tradeToR } from "@/lib/rMultiple";
-import type { PostInput, PostFeedResponse } from "@/types/post";
+import { ensureProfile } from "@/lib/profile";
+import type { PostInput, FeedType } from "@/types/post";
 
-const PAGE_SIZE = 10;
+const VALID_FEED_TYPES: FeedType[] = ["foryou", "following", "popular", "trades", "mistakes", "lessons", "setups"];
 
-// GET /api/posts?cursor=<postId> — feed paginé, plus récent en premier.
-// Le curseur est l'id du dernier post reçu par le client ; on utilise
-// createdAt+id pour un tri stable même en cas d'égalité de timestamp.
+// GET /api/posts?feed=foryou&cursor=<...>
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -19,24 +21,17 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
+  const feedParam = searchParams.get("feed") ?? "foryou";
+  const feedType: FeedType = VALID_FEED_TYPES.includes(feedParam as FeedType) ? (feedParam as FeedType) : "foryou";
   const cursor = searchParams.get("cursor");
 
-  const posts = await prisma.post.findMany({
-    take: PAGE_SIZE + 1, // +1 pour savoir s'il reste une page suivante
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    include: { profile: true },
-  });
-
-  const hasMore = posts.length > PAGE_SIZE;
-  const pageItems = hasMore ? posts.slice(0, PAGE_SIZE) : posts;
-
-  const response: PostFeedResponse = {
-    posts: pageItems.map(serializePost),
-    nextCursor: hasMore ? pageItems[pageItems.length - 1].id : null,
-  };
-
-  return NextResponse.json(response);
+  try {
+    const result = await getFeed(user.id, feedType, cursor);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("Erreur lors du chargement du feed :", err);
+    return NextResponse.json({ error: "Impossible de charger le feed." }, { status: 500 });
+  }
 }
 
 // POST /api/posts — crée une publication, liée ou non à un trade du journal.
@@ -48,16 +43,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
+  await ensureProfile(user.id, user.email);
+
   const body = (await request.json()) as PostInput;
 
-  if (!body.title?.trim()) {
-    return NextResponse.json({ error: "Le titre est obligatoire." }, { status: 400 });
-  }
-  if (!body.mistakeSummary?.trim()) {
-    return NextResponse.json({ error: "Le résumé de l'erreur est obligatoire." }, { status: 400 });
-  }
-  if (!body.lessonLearned?.trim()) {
-    return NextResponse.json({ error: "La leçon apprise est obligatoire." }, { status: 400 });
+  const validationErrors = validatePostInput(body);
+  if (validationErrors.length > 0) {
+    return NextResponse.json({ error: "Publication invalide.", details: validationErrors }, { status: 400 });
   }
 
   let symbol: string | null = null;
@@ -78,10 +70,7 @@ export async function POST(request: NextRequest) {
       );
     }
     if (trade.status === "OPEN") {
-      return NextResponse.json(
-        { error: "Impossible de partager un trade encore ouvert." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Impossible de partager un trade encore ouvert." }, { status: 400 });
     }
 
     const profile = await prisma.profile.findUnique({ where: { id: user.id } });
@@ -92,10 +81,7 @@ export async function POST(request: NextRequest) {
 
     if (riskAmount === null) {
       return NextResponse.json(
-        {
-          error:
-            "Configurez votre capital initial et votre risque par trade dans Paramètres avant de publier un trade.",
-        },
+        { error: "Configurez votre capital initial et votre risque par trade dans Paramètres avant de publier un trade." },
         { status: 400 }
       );
     }
@@ -107,24 +93,35 @@ export async function POST(request: NextRequest) {
     rMultiple = tradeToR(trade.pnl, false, riskAmount);
   }
 
-  const created = await prisma.post.create({
-    data: {
-      userId: user.id,
-      title: body.title.trim(),
-      emotion: body.emotion,
-      mistakeSummary: body.mistakeSummary.trim(),
-      lessonLearned: body.lessonLearned.trim(),
-      beforeImageUrl: body.beforeImageUrl ?? null,
-      afterImageUrl: body.afterImageUrl ?? null,
-      linkedTradeId: body.linkedTradeId ?? null,
-      symbol,
-      direction,
-      entryPrice,
-      exitPrice,
-      rMultiple,
-    },
-    include: { profile: true },
-  });
+  try {
+    const created = await prisma.post.create({
+      data: {
+        userId: user.id,
+        type: body.type,
+        title: body.title.trim(),
+        emotion: body.emotion,
+        mistakeSummary: body.mistakeSummary?.trim() || null,
+        lessonLearned: body.lessonLearned?.trim() || null,
+        body: body.body?.trim() || null,
+        beforeImageUrl: body.beforeImageUrl ?? null,
+        afterImageUrl: body.afterImageUrl ?? null,
+        linkedTradeId: body.linkedTradeId ?? null,
+        symbol,
+        direction,
+        entryPrice,
+        exitPrice,
+        rMultiple,
+      },
+      include: postInclude(user.id),
+    });
 
-  return NextResponse.json({ post: serializePost(created) }, { status: 201 });
+    const followingIds = await getFollowingIds(user.id);
+    return NextResponse.json(
+      { post: serializePost(created as any, user.id, new Set(followingIds)) },
+      { status: 201 }
+    );
+  } catch (err) {
+    console.error("Erreur lors de la création du post :", err);
+    return NextResponse.json({ error: "Impossible de créer la publication." }, { status: 500 });
+  }
 }

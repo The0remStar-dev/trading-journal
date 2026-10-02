@@ -29,21 +29,20 @@ model Trade {
   rMultiple       Float?
   status          TradeStatus   @default(OPEN)
   tags            String        @default("[]")
-  timeframe       Timeframe?
-  setupQuality    Float?
-  planRespected   Boolean?
-  stopMoved       Boolean       @default(false)
-  tpMoved         Boolean       @default(false)
-  errorType       String?
   notes           String?
   beforeImageUrl  String?
   afterImageUrl   String?
   emotion         TradeEmotion?
+  timeframe       Timeframe?
+  setupQuality    Int?
+  planRespected   Boolean?
+  stopMoved       Boolean       @default(false)
+  tpMoved         Boolean       @default(false)
+  errorType       String?
+  mistake         String?
+  lesson          String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
-  
-  mistake String?
-  lesson  String?
 
   @@index([userId])
   @@index([entryDate])
@@ -83,10 +82,10 @@ enum Timeframe {
 }
 
 enum ExperienceLevel {
-  BEGINNER      // < 1 an
-  INTERMEDIATE  // 1-3 ans
-  ADVANCED      // 3-5 ans
-  EXPERT        // > 5 ans
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
 }
 
 enum Language {
@@ -108,9 +107,22 @@ enum TradeEmotion {
   NEUTRAL
 }
 
+enum PostType {
+  TRADE
+  MISTAKE
+  LESSON
+  SETUP
+  WEEKLY_REVIEW
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+  ACTIONED
+}
+
 model Profile {
-  // L'id correspond directement à l'UUID de l'utilisateur Supabase (auth.users.id).
-  // Pas d'auto-génération : il est fourni explicitement à la création.
   id String @id
 
   username   String  @unique
@@ -119,19 +131,21 @@ model Profile {
   bio        String?
 
   experienceLevel ExperienceLevel @default(BEGINNER)
-
-  // Capital initial de référence, utilisé uniquement pour normaliser les
-  // performances en "R" côté plateforme. Ce champ ne doit JAMAIS être exposé
-  // publiquement dans les API de social trading (profils publics, feed, etc.).
   initialCapital Float?
-
-  // Pourcentage du capital initial risqué par trade, utilisé comme base de
-  // calcul du "1R" pour toute la plateforme (ex: 1% de 10 000$ = 100$ = 1R).
   riskPerTradePercent Float @default(1)
-
   language Language @default(FR)
 
-  posts Post[]
+  // Si true, les posts de ce profil ne sont visibles que par ses followers
+  // (et lui-même) dans les feeds publics — appliqué au niveau requête DB.
+  isPrivate Boolean @default(false)
+
+  posts     Post[]
+  comments  Comment[] @relation("CommentAuthor")
+  likes     Like[]    @relation("LikeAuthor")
+  saves     Save[]    @relation("SaveAuthor")
+  reports   Report[]  @relation("Reporter")
+  following Follow[]  @relation("Following")
+  followers Follow[]  @relation("Followers")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -145,14 +159,22 @@ model Post {
   userId  String
   profile Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  title          String
-  emotion        TradeEmotion @default(NEUTRAL)
-  mistakeSummary String
-  lessonLearned  String
+  type  PostType @default(TRADE)
+  title String
+
+  // Contenu structuré (format historique "trade retrospective") — optionnel
+  // pour laisser place au champ `body` générique utilisé par SETUP/WEEKLY_REVIEW.
+  mistakeSummary String?
+  lessonLearned  String?
+  body           String?
+
+  emotion TradeEmotion @default(NEUTRAL)
 
   beforeImageUrl String?
   afterImageUrl  String?
 
+  // Snapshot dénormalisé du trade lié — JAMAIS pnl/fees/positionSize, pour
+  // garantir qu'un trade privé ne devienne jamais public via un post.
   linkedTradeId String?
   symbol        String?
   direction     Direction?
@@ -160,11 +182,103 @@ model Post {
   exitPrice     Float?
   rMultiple     Float?
 
+  // Préparé pour une modération future (masquage sans suppression) —
+  // aucune route n'écrit ce champ pour l'instant.
+  deletedAt DateTime?
+
+  comments Comment[]
+  likes    Like[]
+  saves    Save[]
+  reports  Report[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([createdAt])
+  @@index([type])
 }
 
+model Comment {
+  id String @id @default(uuid())
 
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  userId  String
+  profile Profile @relation("CommentAuthor", fields: [userId], references: [id], onDelete: Cascade)
+
+  body String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([postId])
+  @@index([userId])
+}
+
+model Like {
+  id String @id @default(uuid())
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  userId  String
+  profile Profile @relation("LikeAuthor", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model Save {
+  id String @id @default(uuid())
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  userId  String
+  profile Profile @relation("SaveAuthor", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+}
+
+model Follow {
+  id String @id @default(uuid())
+
+  followerId String
+  follower   Profile @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+
+  followingId String
+  followingProfile Profile @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Report {
+  id String @id @default(uuid())
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  reporterId String
+  reporter   Profile @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  reason String
+  status ReportStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@index([reporterId])
+}

@@ -11,6 +11,7 @@ export interface Profile {
   initialCapital: number | null;
   riskPerTradePercent: number;
   language: Language;
+  isPrivate: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,6 +24,7 @@ export interface ProfileInput {
   initialCapital: number | null;
   riskPerTradePercent: number;
   language: Language;
+  isPrivate: boolean;
 }
 
 export const EXPERIENCE_LEVEL_LABELS: Record<ExperienceLevel, string> = {

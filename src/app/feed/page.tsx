@@ -5,19 +5,21 @@ import { Plus } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { CreatePostModal } from "@/components/posts/CreatePostModal";
-import { PostFeed } from "@/components/posts/PostFeed";
-import type { Post } from "@/types/post";
+import { CommunityFeed } from "@/components/community/CommunityFeed";
+import { FeedTabs } from "@/components/community/FeedTabs";
+import type { FeedType, Post } from "@/types/post";
 
 export default function FeedPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [justPublished, setJustPublished] = useState<Post | null>(null);
+  const [feedType, setFeedType] = useState<FeedType>("foryou");
 
   return (
     <AppShell>
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Accueil</h1>
-          <p className="text-sm text-muted">Partagez vos leçons avec la communauté TradeShare.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Communauté</h1>
+          <p className="mt-1 text-sm text-muted">Partagez vos leçons, découvrez celles des autres.</p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="h-4 w-4" />
@@ -25,7 +27,11 @@ export default function FeedPage() {
         </Button>
       </div>
 
-      <PostFeed pendingNewPost={justPublished} />
+      <div className="mb-5">
+        <FeedTabs value={feedType} onChange={setFeedType} />
+      </div>
+
+      <CommunityFeed feedType={feedType} pendingNewPost={justPublished} />
 
       <CreatePostModal open={createOpen} onOpenChange={setCreateOpen} onSuccess={setJustPublished} />
     </AppShell>

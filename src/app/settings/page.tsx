@@ -23,6 +23,7 @@ const DEFAULT_FORM: ProfileInput = {
   initialCapital: null,
   riskPerTradePercent: 1,
   language: "FR",
+  isPrivate: false,
 };
 
 export default function SettingsPage() {
@@ -43,6 +44,7 @@ export default function SettingsPage() {
         initialCapital: profile.initialCapital,
         riskPerTradePercent: profile.riskPerTradePercent,
         language: profile.language,
+        isPrivate: profile.isPrivate,
       });
     }
   }, [profile]);
@@ -84,8 +86,8 @@ export default function SettingsPage() {
     <TooltipProvider>
       <AppShell>
         <div className="mb-5">
-          <h1 className="text-xl font-semibold text-foreground">Paramètres</h1>
-          <p className="text-sm text-muted">Gérez votre identité, votre sécurité et vos préférences.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Paramètres</h1>
+          <p className="mt-1 text-sm text-muted">Gérez votre identité, votre sécurité et vos préférences.</p>
         </div>
 
         {error && (

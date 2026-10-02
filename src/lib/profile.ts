@@ -12,15 +12,14 @@ export async function ensureProfile(
   userId: string,
   email: string | null | undefined
 ): Promise<PrismaProfile> {
-  const existing = await prisma.profile.findUnique({ where: { id: userId } });
-  if (existing) return existing;
-
   const baseUsername = (email?.split("@")[0] ?? "trader")
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, "");
   const fallbackUsername = `${baseUsername}_${userId.slice(0, 6)}`;
 
-  return prisma.profile.create({
-    data: { id: userId, username: fallbackUsername },
+  return prisma.profile.upsert({
+    where: { id: userId },
+    create: { id: userId, username: fallbackUsername },
+    update: {},
   });
 }

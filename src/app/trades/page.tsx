@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { TradeTable } from "@/components/trades/TradeTable";
@@ -30,6 +30,9 @@ export default function TradesPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<Trade | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [deleteAllError, setDeleteAllError] = useState<string | null>(null);
 
   function openNewTradeForm() {
     setEditingTrade(null);
@@ -65,6 +68,24 @@ export default function TradesPage() {
     }
   }
 
+  async function confirmDeleteAll() {
+    setDeletingAll(true);
+    setDeleteAllError(null);
+    try {
+      const response = await fetch("/api/trades/delete-all", { method: "DELETE" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.error ?? "Failed to delete trades.");
+      }
+      await refetch();
+      setDeleteAllOpen(false);
+    } catch (err) {
+      setDeleteAllError(err instanceof Error ? err.message : "Failed to delete trades.");
+    } finally {
+      setDeletingAll(false);
+    }
+  }
+
   return (
     <AppShell>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -73,6 +94,16 @@ export default function TradesPage() {
           <p className="text-sm text-muted">Every trade, filterable and sortable.</p>
         </div>
         <div className="flex gap-2">
+          {trades.length > 0 && (
+            <Button
+              variant="destructive"
+              onClick={() => setDeleteAllOpen(true)}
+              disabled={deletingAll}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete All Trades
+            </Button>
+          )}
           <ImportTradesModal onSuccess={refetch} />
           <Button onClick={openNewTradeForm}>
             <Plus className="h-4 w-4" />
@@ -121,6 +152,38 @@ export default function TradesPage() {
             </Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={deleting}>
               {deleting ? "Deleting..." : "Delete Trade"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteAllOpen}
+        onOpenChange={(open) => {
+          setDeleteAllOpen(open);
+          if (!open) setDeleteAllError(null);
+        }}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Delete all trades?</DialogTitle>
+            <DialogDescription>
+              This permanently deletes all {trades.length} trades in your journal. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteAllError && (
+            <p role="alert" className="text-sm text-loss">{deleteAllError}</p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteAllOpen(false)}
+              disabled={deletingAll}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteAll} disabled={deletingAll}>
+              {deletingAll ? "Deleting..." : "Delete All Trades"}
             </Button>
           </div>
         </DialogContent>
