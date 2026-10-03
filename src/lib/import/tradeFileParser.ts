@@ -266,6 +266,18 @@ export async function parseTradeFileBuffer(
   if (rows.length === 0) return { error: "Impossible de lire le contenu du fichier." };
 
   const headerInfo = findHeaderRow(rows);
+  if (
+    headerInfo &&
+    headerInfo.headerCells.some((cell) => cell.includes("heure de placement")) &&
+    headerInfo.headerCells.some((cell) => cell.includes("prix de remplissage")) &&
+    headerInfo.headerCells.some((cell) => cell.includes("statut"))
+  ) {
+    return {
+      error:
+        "Ce fichier TradingView contient l'historique des ordres, pas des trades. Les ordres annulés ou non exécutés ne peuvent pas être importés. Utilisez un export de trades contenant les prix et dates d'entrée et de sortie.",
+    };
+  }
+
   if (!headerInfo || headerInfo.columnMap.symbol === undefined || headerInfo.columnMap.entryDate === undefined) {
     return { error: "Impossible de détecter les colonnes de trading (symbole / date d'ouverture)." };
   }
