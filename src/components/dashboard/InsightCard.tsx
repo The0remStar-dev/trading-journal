@@ -19,7 +19,7 @@ export function InsightCard({ patterns }: { patterns: BehavioralPattern[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm font-medium text-foreground">Point d'attention</CardTitle>
+        <CardTitle className="text-sm font-medium text-foreground">Point d&apos;attention</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
         {!top ? (

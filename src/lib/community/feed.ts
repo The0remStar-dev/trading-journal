@@ -22,6 +22,29 @@ export interface FeedResult {
   nextCursor: string | null;
 }
 
+async function getPagedPosts(
+  viewerId: string,
+  where: Prisma.PostWhereInput,
+  followingSet: Set<string>,
+  cursor: string | null
+): Promise<FeedResult> {
+  const rows = await prisma.post.findMany({
+    where,
+    take: PAGE_SIZE + 1,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    include: postInclude(viewerId),
+  });
+
+  const hasMore = rows.length > PAGE_SIZE;
+  const page = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
+
+  return {
+    posts: page.map((r) => serializePost(r as any, viewerId, followingSet)),
+    nextCursor: hasMore ? page[page.length - 1].id : null,
+  };
+}
+
 export async function getFeed(
   viewerId: string,
   feedType: FeedType,
@@ -44,21 +67,25 @@ export async function getFeed(
   const typeFilter = TYPE_FILTERS[feedType];
   if (typeFilter) where = { ...where, ...typeFilter };
 
-  const rows = await prisma.post.findMany({
-    where,
-    take: PAGE_SIZE + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    include: postInclude(viewerId),
-  });
+  return getPagedPosts(viewerId, where, followingSet, cursor);
+}
 
-  const hasMore = rows.length > PAGE_SIZE;
-  const page = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
-
-  return {
-    posts: page.map((r) => serializePost(r as any, viewerId, followingSet)),
-    nextCursor: hasMore ? page[page.length - 1].id : null,
+/**
+ * Posts d'un auteur précis, pour la page profil. La clause de visibilité
+ * standard reste appliquée au niveau requête : même si la route oubliait
+ * un contrôle, un post d'un profil privé ne sortirait jamais.
+ */
+export async function getUserPosts(
+  viewerId: string,
+  authorId: string,
+  cursor: string | null
+): Promise<FeedResult> {
+  const followingIds = await getFollowingIds(viewerId);
+  const where: Prisma.PostWhereInput = {
+    ...buildVisiblePostsWhere(viewerId, followingIds),
+    userId: authorId,
   };
+  return getPagedPosts(viewerId, where, new Set(followingIds), cursor);
 }
 
 async function getPopularFeed(

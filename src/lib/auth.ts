@@ -41,7 +41,7 @@ export async function verifySessionToken(token: string): Promise<boolean> {
  * and reports whether the current request is authenticated.
  */
 export async function isAuthenticated(): Promise<boolean> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return false;
   return verifySessionToken(token);

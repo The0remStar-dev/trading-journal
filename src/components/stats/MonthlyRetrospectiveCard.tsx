@@ -81,10 +81,10 @@ export function MonthlyRetrospectiveCard({ stats }: { stats: MonthlyStatsRespons
               {stats.bestEmotion && stats.worstEmotion && (
                 <p className="text-sm text-foreground">
                   Ce mois-ci, vos trades marqués{" "}
-                  <span className="font-medium text-loss">"{EMOTION_LABELS[stats.worstEmotion.emotion]}"</span>{" "}
+                  <span className="font-medium text-loss">&quot;{EMOTION_LABELS[stats.worstEmotion.emotion]}&quot;</span>{" "}
                   ont généré <span className="font-medium text-loss">{stats.worstEmotion.totalR}R</span>, tandis
                   que vos trades{" "}
-                  <span className="font-medium text-win">"{EMOTION_LABELS[stats.bestEmotion.emotion]}"</span> vous
+                  <span className="font-medium text-win">&quot;{EMOTION_LABELS[stats.bestEmotion.emotion]}&quot;</span> vous
                   ont rapporté <span className="font-medium text-win">+{stats.bestEmotion.totalR}R</span>.
                 </p>
               )}

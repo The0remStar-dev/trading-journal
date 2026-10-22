@@ -1,12 +1,11 @@
-import { Lock, Globe } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { AvatarUpload } from "@/components/settings/AvatarUpload";
-import { EXPERIENCE_LEVEL_LABELS } from "@/types/profile";
-import { cn } from "@/lib/utils";
-import type { ProfileInput, ExperienceLevel } from "@/types/profile";
+import { EXPERIENCE_LEVEL_LABELS, TRADING_STYLE_LABELS } from "@/types/profile";
+import { BIO_MAX_LENGTH } from "@/lib/validation/profileValidation";
+import type { ProfileInput, ExperienceLevel, TradingStyle } from "@/types/profile";
 
 interface ProfileTabProps {
   form: ProfileInput;
@@ -36,18 +35,22 @@ export function ProfileTab({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <Label>Nom d'utilisateur</Label>
+          <Label>Nom d&apos;utilisateur</Label>
           <Input
             required
             minLength={3}
             placeholder="ex: swing_trader_fr"
             value={form.username}
-            onChange={(e) => onChange("username", e.target.value)}
+            onChange={(e) => onChange("username", e.target.value.toLowerCase())}
           />
+          <p className="text-xs text-muted">
+            3 à 20 caractères : lettres minuscules, chiffres et _. Ton profil : /u/{form.username || "…"}
+          </p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label>Nom complet</Label>
           <Input
+            maxLength={80}
             placeholder="ex: Julien Dupont"
             value={form.fullName ?? ""}
             onChange={(e) => onChange("fullName", e.target.value)}
@@ -55,57 +58,58 @@ export function ProfileTab({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label>Niveau d'expérience</Label>
-        <Select
-          value={form.experienceLevel}
-          onValueChange={(v) => onChange("experienceLevel", v as ExperienceLevel)}
-        >
-          <SelectTrigger className="max-w-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(EXPERIENCE_LEVEL_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label>Style de trading</Label>
+          <Select
+            value={form.tradingStyle ?? "NONE"}
+            onValueChange={(v) => onChange("tradingStyle", v === "NONE" ? null : (v as TradingStyle))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Non renseigné" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="NONE">Non renseigné</SelectItem>
+              {Object.entries(TRADING_STYLE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label>Niveau d&apos;expérience</Label>
+          <Select
+            value={form.experienceLevel}
+            onValueChange={(v) => onChange("experienceLevel", v as ExperienceLevel)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(EXPERIENCE_LEVEL_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label>Bio</Label>
         <Textarea
           rows={4}
+          maxLength={BIO_MAX_LENGTH}
           placeholder="Décrivez votre stratégie, votre approche du risque, votre psychologie de trading..."
           value={form.bio ?? ""}
           onChange={(e) => onChange("bio", e.target.value)}
         />
-      </div>
-
-      <div className="flex items-start gap-3 rounded-md border border-border p-3">
-        <button
-          type="button"
-          onClick={() => onChange("isPrivate", !form.isPrivate)}
-          className={cn(
-            "mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full border border-border transition-colors",
-            form.isPrivate ? "justify-end bg-accent" : "justify-start bg-secondary"
-          )}
-        >
-          <span className="mx-0.5 h-4 w-4 rounded-full bg-white shadow-sm" />
-        </button>
-        <div>
-          <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-            {form.isPrivate ? <Lock className="h-3.5 w-3.5" /> : <Globe className="h-3.5 w-3.5" />}
-            Profil privé
-          </div>
-          <p className="mt-0.5 text-xs text-muted">
-            {form.isPrivate
-              ? "Seuls vos followers peuvent voir vos publications dans la Communauté."
-              : "Vos publications sont visibles par tous les utilisateurs de TradeShare."}
-          </p>
-        </div>
+        <p className="text-right text-xs text-muted">
+          {(form.bio ?? "").length}/{BIO_MAX_LENGTH}
+        </p>
       </div>
     </div>
   );

@@ -1,0 +1,10 @@
+-- CreateEnum
+CREATE TYPE "TradingStyle" AS ENUM ('SCALPER', 'DAY_TRADER', 'SWING_TRADER', 'POSITION_TRADER', 'OTHER');
+
+-- AlterTable
+ALTER TABLE "Profile"
+ADD COLUMN "tradingStyle" "TradingStyle",
+ADD COLUMN "showPerformance" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showStats" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "showTrades" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "showHistory" BOOLEAN NOT NULL DEFAULT false;

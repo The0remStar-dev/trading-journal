@@ -14,7 +14,7 @@ export function EquityCurveRChart({ data }: { data: EquityPointR[] }) {
   return (
     <Card className="col-span-2">
       <CardHeader>
-        <CardTitle className="text-sm font-medium text-foreground">Courbe d'équité (en R)</CardTitle>
+        <CardTitle className="text-sm font-medium text-foreground">Courbe d&apos;équité (en R)</CardTitle>
       </CardHeader>
       <CardContent className="h-72 pt-0">
         {data.length === 0 ? (

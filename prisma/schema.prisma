@@ -122,6 +122,14 @@ enum ReportStatus {
   ACTIONED
 }
 
+enum TradingStyle {
+  SCALPER
+  DAY_TRADER
+  SWING_TRADER
+  POSITION_TRADER
+  OTHER
+}
+
 model Profile {
   id String @id
 
@@ -130,14 +138,20 @@ model Profile {
   avatarUrl  String?
   bio        String?
 
+  tradingStyle    TradingStyle?
   experienceLevel ExperienceLevel @default(BEGINNER)
   initialCapital Float?
   riskPerTradePercent Float @default(1)
   language Language @default(FR)
 
-  // Si true, les posts de ce profil ne sont visibles que par ses followers
-  // (et lui-même) dans les feeds publics — appliqué au niveau requête DB.
+  // Si true, seuls les followers (et le propriétaire) voient le contenu.
   isPrivate Boolean @default(false)
+
+  // Granularité de partage, appliquée côté serveur uniquement.
+  showPerformance Boolean @default(true)
+  showStats       Boolean @default(true)
+  showTrades      Boolean @default(false)
+  showHistory     Boolean @default(false)
 
   posts     Post[]
   comments  Comment[] @relation("CommentAuthor")
@@ -152,6 +166,8 @@ model Profile {
 
   @@index([username])
 }
+
+
 
 model Post {
   id String @id @default(uuid())

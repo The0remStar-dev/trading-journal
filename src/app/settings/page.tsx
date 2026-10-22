@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProfileTab } from "@/components/settings/ProfileTab";
+import { PrivacyTab } from "@/components/settings/PrivacyTab";
 import { SecurityTab } from "@/components/settings/SecurityTab";
 import { TradingCapitalTab } from "@/components/settings/TradingCapitalTab";
 import { PreferencesTab } from "@/components/settings/PreferencesTab";
@@ -19,11 +20,16 @@ const DEFAULT_FORM: ProfileInput = {
   username: "",
   fullName: null,
   bio: null,
+  tradingStyle: null,
   experienceLevel: "BEGINNER",
   initialCapital: null,
   riskPerTradePercent: 1,
   language: "FR",
   isPrivate: false,
+  showPerformance: true,
+  showStats: true,
+  showTrades: false,
+  showHistory: false,
 };
 
 export default function SettingsPage() {
@@ -40,11 +46,16 @@ export default function SettingsPage() {
         username: profile.username,
         fullName: profile.fullName,
         bio: profile.bio,
+        tradingStyle: profile.tradingStyle,
         experienceLevel: profile.experienceLevel,
         initialCapital: profile.initialCapital,
         riskPerTradePercent: profile.riskPerTradePercent,
         language: profile.language,
         isPrivate: profile.isPrivate,
+        showPerformance: profile.showPerformance,
+        showStats: profile.showStats,
+        showTrades: profile.showTrades,
+        showHistory: profile.showHistory,
       });
     }
   }, [profile]);
@@ -87,7 +98,7 @@ export default function SettingsPage() {
       <AppShell>
         <div className="mb-5">
           <h1 className="text-2xl font-semibold text-foreground">Paramètres</h1>
-          <p className="mt-1 text-sm text-muted">Gérez votre identité, votre sécurité et vos préférences.</p>
+          <p className="mt-1 text-sm text-muted">Gérez votre identité, votre confidentialité et vos préférences.</p>
         </div>
 
         {error && (
@@ -102,8 +113,9 @@ export default function SettingsPage() {
           <Card>
             <CardContent className="p-6">
               <Tabs defaultValue="profile">
-                <TabsList>
+                <TabsList className="flex h-auto flex-wrap">
                   <TabsTrigger value="profile">Profil</TabsTrigger>
+                  <TabsTrigger value="privacy">Confidentialité</TabsTrigger>
                   <TabsTrigger value="security">Sécurité & Compte</TabsTrigger>
                   <TabsTrigger value="capital">Trading & Capital</TabsTrigger>
                   <TabsTrigger value="preferences">Préférences</TabsTrigger>
@@ -118,6 +130,10 @@ export default function SettingsPage() {
                     onAvatarUpload={handleAvatarUpload}
                     onAvatarError={(msg) => toast({ title: "Erreur", description: msg, variant: "error" })}
                   />
+                </TabsContent>
+
+                <TabsContent value="privacy">
+                  <PrivacyTab form={form} onChange={updateField} />
                 </TabsContent>
 
                 <TabsContent value="security">

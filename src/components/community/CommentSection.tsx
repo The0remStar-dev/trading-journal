@@ -104,7 +104,7 @@ export function CommentSection({ postId, onCountChange }: { postId: string; onCo
               </div>
             </div>
           ))}
-          {comments.length === 0 && <p className="text-xs text-muted">Aucun commentaire pour l'instant.</p>}
+          {comments.length === 0 && <p className="text-xs text-muted">Aucun commentaire pour l&apos;instant.</p>}
         </div>
       )}
 

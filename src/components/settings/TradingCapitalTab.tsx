@@ -18,7 +18,7 @@ export function TradingCapitalTab({ form, onChange }: TradingCapitalTabProps) {
   return (
     <div className="flex flex-col gap-5">
       <div className="rounded-md border border-accent-cyan/30 bg-accent-cyan/5 px-4 py-3 text-sm text-foreground">
-        Ce paramètre est au cœur de l'expérience TradeShare : il permet de convertir automatiquement
+        Ce paramètre est au cœur de l&apos;expérience TradeShare : il permet de convertir automatiquement
         vos gains et pertes en <strong>multiples de R</strong>, pour que la communauté juge votre
         gestion du risque plutôt que la taille brute de votre capital.
       </div>
@@ -34,7 +34,7 @@ export function TradingCapitalTab({ form, onChange }: TradingCapitalTabProps) {
             </TooltipTrigger>
             <TooltipContent>
               Ce montant reste strictement confidentiel et sert uniquement à normaliser vos
-              performances en "R" pour protéger la communauté et valoriser la gestion du risque.
+              performances en &quot;R&quot; pour protéger la communauté et valoriser la gestion du risque.
             </TooltipContent>
           </Tooltip>
         </div>
@@ -65,7 +65,7 @@ export function TradingCapitalTab({ form, onChange }: TradingCapitalTabProps) {
               </button>
             </TooltipTrigger>
             <TooltipContent>
-              Définit ce que représente "1R" : si vous risquez habituellement 1% de votre capital
+              Définit ce que représente &quot;1R&quot; : si vous risquez habituellement 1% de votre capital
               par trade, 1R = 1% de votre capital initial. Ajustez selon votre gestion du risque réelle.
             </TooltipContent>
           </Tooltip>

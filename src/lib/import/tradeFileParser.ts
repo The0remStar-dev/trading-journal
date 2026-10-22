@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import JSZip from "jszip";
 import { detectBrokerProfile, type BrokerProfile } from "@/lib/import/brokerProfiles";
 
