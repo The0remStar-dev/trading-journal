@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Menu } from "lucide-react";
 import { Sidebar, useSidebarCollapse } from "@/components/layout/Sidebar";
 import { Header } from "@/components/ui/Header";
@@ -27,7 +28,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <span className="text-sm font-semibold tracking-tight text-foreground">TradeShare</span>
+        <Image
+          src="/tradeshare-logo.png"
+          alt="TradeShare"
+          width={2168}
+          height={401}
+          priority
+          className="h-auto w-[112px] rounded-sm"
+        />
       </div>
 
       {/* Le padding gauche suit dynamiquement l'état de la sidebar en desktop. */}

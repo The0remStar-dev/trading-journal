@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -83,17 +84,32 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
             collapsed ? "lg:justify-center lg:px-0" : "justify-between"
           )}
         >
-          <div className={cn("flex flex-col", collapsed && "lg:hidden")}>
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-foreground text-xs font-bold text-white">T</span>
-              <span className="text-base font-semibold tracking-tight text-foreground">TradeShare</span>
-            </div>
-            <span className="mt-1 text-[11px] text-muted">Analyse. Partage. Progresse.</span>
-          </div>
-
-          <span className={cn("hidden h-7 w-7 items-center justify-center rounded-md bg-foreground text-xs font-bold text-white", collapsed && "lg:flex")}>
-            T
-          </span>
+          <Link
+            href="/dashboard"
+            onClick={onMobileClose}
+            aria-label="TradeShare — Accueil"
+            title={collapsed ? "TradeShare" : undefined}
+            className={cn(
+              "flex shrink-0 items-center",
+              collapsed && "lg:h-10 lg:w-10 lg:justify-center"
+            )}
+          >
+            <Image
+              src="/tradeshare-logo.png"
+              alt="TradeShare"
+              width={2168}
+              height={401}
+              priority
+              className={cn("h-auto w-[200px] rounded-sm", collapsed && "lg:hidden")}
+            />
+            <Image
+              src="/favicon.png"
+              alt=""
+              width={401}
+              height={401}
+              className={cn("hidden h-10 w-10 rounded-sm", collapsed && "lg:block")}
+            />
+          </Link>
 
           <button
             onClick={onMobileClose}

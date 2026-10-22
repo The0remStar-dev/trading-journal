@@ -4,8 +4,8 @@ export const dynamic = 'force-dynamic'
 
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
-import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -85,13 +85,16 @@ const handleEmailAuth = async (e: React.FormEvent) => {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-sm p-8">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-secondary">
-            <Lock className="h-5 w-5 text-accent" />
-          </div>
+          <Image
+            src="/tradeshare-logo.png"
+            alt="TradeShare"
+            width={2168}
+            height={401}
+            priority
+            className="h-auto w-[350px] rounded-sm"
+          />
           <div>
-            <h1 className="text-lg font-semibold text-foreground">
-              TradeShare
-            </h1>
+            <h1 className="sr-only">TradeShare</h1>
             <p className="mt-1 text-xs text-muted">
               {isSignUp ? 'Créer un compte trader' : 'Connecte-toi à ton espace'}
             </p>
