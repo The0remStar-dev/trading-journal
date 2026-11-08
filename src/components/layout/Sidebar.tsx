@@ -20,6 +20,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NotificationBadge } from "@/components/community/NotificationBadge";
 
 // Navigation principale : reprend les onglets déjà existants dans l'app.
 const MAIN_NAV_ITEMS = [
@@ -151,6 +152,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
                     )}
                     <item.icon className="h-4 w-4 shrink-0" />
                     <span className={cn(collapsed && "lg:hidden")}>{item.label}</span>
+                    {item.href === "/feed" && <NotificationBadge compact className="lg:hidden" />}
                   </Link>
                 </li>
               );

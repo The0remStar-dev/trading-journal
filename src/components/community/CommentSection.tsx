@@ -16,7 +16,15 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)} j`;
 }
 
-export function CommentSection({ postId, onCountChange }: { postId: string; onCountChange: (count: number) => void }) {
+export function CommentSection({
+  postId,
+  focusCommentId,
+  onCountChange,
+}: {
+  postId: string;
+  focusCommentId?: string | null;
+  onCountChange: (count: number) => void;
+}) {
   const { toast } = useToast();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +37,12 @@ export function CommentSection({ postId, onCountChange }: { postId: string; onCo
       .then((data) => setComments(data.comments ?? []))
       .finally(() => setLoading(false));
   }, [postId]);
+
+  useEffect(() => {
+    if (!loading && focusCommentId) {
+      document.getElementById(`comment-${focusCommentId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [comments, focusCommentId, loading]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -80,7 +94,7 @@ export function CommentSection({ postId, onCountChange }: { postId: string; onCo
       ) : (
         <div className="flex max-h-64 flex-col gap-3 overflow-y-auto">
           {comments.map((c) => (
-            <div key={c.id} className="flex items-start gap-2">
+            <div key={c.id} id={`comment-${c.id}`} className="flex items-start gap-2 scroll-mt-20">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-secondary">
                 {c.author.avatarUrl ? (
                   <img src={c.author.avatarUrl} alt={c.author.username} className="h-full w-full object-cover" />

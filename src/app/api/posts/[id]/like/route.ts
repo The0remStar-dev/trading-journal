@@ -9,7 +9,7 @@ interface Params {
 }
 
 // POST /api/posts/:id/like — toggle, persistant, idempotent côté état.
-export async function POST(_request: NextRequest, { params }: Params) {
+export async function POST(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -27,16 +27,60 @@ export async function POST(_request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Publication introuvable." }, { status: 404 });
   }
 
-  const existing = await prisma.like.findUnique({
-    where: { postId_userId: { postId: id, userId: user.id } },
+  const body: { liked?: unknown } = await request.json().catch(() => ({}));
+  if (body.liked !== undefined && typeof body.liked !== "boolean") {
+    return NextResponse.json({ error: "État du like invalide." }, { status: 400 });
+  }
+  const requestedState =
+    typeof body.liked === "boolean" ? body.liked : undefined;
+
+  const liked = await prisma.$transaction(async (tx) => {
+    const existing = await tx.like.findUnique({
+      where: { postId_userId: { postId: id, userId: user.id } },
+      select: { id: true },
+    });
+    const nextLiked = requestedState ?? !existing;
+
+    if (nextLiked) {
+      const like = await tx.like.upsert({
+        where: { postId_userId: { postId: id, userId: user.id } },
+        create: { postId: id, userId: user.id },
+        update: {},
+        select: { id: true },
+      });
+
+      if (post.userId !== user.id) {
+        await tx.notification.upsert({
+          where: {
+            dedupeKey: `like:${id}:${user.id}`,
+          },
+          create: {
+            recipientId: post.userId,
+            actorId: user.id,
+            type: "LIKE",
+            dedupeKey: `like:${id}:${user.id}`,
+            postId: id,
+          },
+          update: {},
+        });
+      }
+      return Boolean(like);
+    }
+
+    if (existing) {
+      await tx.like.delete({ where: { id: existing.id } });
+      await tx.notification.deleteMany({
+        where: {
+          recipientId: post.userId,
+          actorId: user.id,
+          type: "LIKE",
+          dedupeKey: `like:${id}:${user.id}`,
+        },
+      });
+    }
+    return false;
   });
 
-  if (existing) {
-    await prisma.like.delete({ where: { id: existing.id } });
-  } else {
-    await prisma.like.create({ data: { postId: id, userId: user.id } });
-  }
-
   const likeCount = await prisma.like.count({ where: { postId: id } });
-  return NextResponse.json({ liked: !existing, likeCount });
+  return NextResponse.json({ liked, likeCount });
 }

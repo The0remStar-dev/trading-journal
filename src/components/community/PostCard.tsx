@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart, MessageCircle, Bookmark, User, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { EMOTION_LABELS } from "@/types/trade";
 import { POST_TYPE_LABELS } from "@/types/post";
 import { EXPERIENCE_LEVEL_LABELS } from "@/types/profile";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/lib/useToast";
 import type { Post } from "@/types/post";
 
 function timeAgo(iso: string): string {
@@ -31,18 +32,40 @@ interface PostCardProps {
   post: Post;
   onDelete?: (postId: string) => void;
   onPatch?: (postId: string, patch: Partial<Post>) => void;
+  initialCommentId?: string | null;
 }
 
-export function PostCard({ post, onDelete, onPatch }: PostCardProps) {
-  const [commentsOpen, setCommentsOpen] = useState(false);
+export function PostCard({ post, onDelete, onPatch, initialCommentId }: PostCardProps) {
+  const [commentsOpen, setCommentsOpen] = useState(Boolean(initialCommentId));
   const [followBusy, setFollowBusy] = useState(false);
+  const [likeBusy, setLikeBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (initialCommentId) setCommentsOpen(true);
+  }, [initialCommentId]);
 
   async function toggleLike() {
-    const res = await fetch(`/api/posts/${post.id}/like`, { method: "POST" });
-    if (res.ok) {
+    if (likeBusy) return;
+    setLikeBusy(true);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ liked: !post.isLikedByViewer }),
+      });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Impossible de modifier le like.");
       onPatch?.(post.id, { isLikedByViewer: data.liked, likeCount: data.likeCount });
+    } catch (error) {
+      toast({
+        title: "Action impossible",
+        description: error instanceof Error ? error.message : "Erreur inconnue.",
+        variant: "error",
+      });
+    } finally {
+      setLikeBusy(false);
     }
   }
 
@@ -58,11 +81,20 @@ export function PostCard({ post, onDelete, onPatch }: PostCardProps) {
     if (followBusy) return;
     setFollowBusy(true);
     try {
-      const res = await fetch(`/api/users/${encodeURIComponent(post.author.username)}/follow`, { method: "POST" });
-      if (res.ok) {
-        const data = await res.json();
-        onPatch?.(post.id, { isFollowingAuthor: data.isFollowing });
-      }
+      const res = await fetch(`/api/users/${encodeURIComponent(post.author.username)}/follow`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFollowing: !post.isFollowingAuthor }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Impossible de modifier le suivi.");
+      onPatch?.(post.id, { isFollowingAuthor: data.isFollowing });
+    } catch (error) {
+      toast({
+        title: "Action impossible",
+        description: error instanceof Error ? error.message : "Erreur inconnue.",
+        variant: "error",
+      });
     } finally {
       setFollowBusy(false);
     }
@@ -176,7 +208,12 @@ export function PostCard({ post, onDelete, onPatch }: PostCardProps) {
         )}
 
         <div className="mt-4 flex items-center gap-4 border-t border-border pt-3">
-          <button onClick={toggleLike} className="flex items-center gap-1.5 text-sm text-muted hover:text-loss">
+          <button
+            onClick={toggleLike}
+            disabled={likeBusy}
+            aria-pressed={post.isLikedByViewer}
+            className="flex items-center gap-1.5 text-sm text-muted hover:text-loss disabled:opacity-60"
+          >
             <Heart className={cn("h-4 w-4", post.isLikedByViewer && "fill-loss text-loss")} />
             {post.likeCount}
           </button>
@@ -195,7 +232,11 @@ export function PostCard({ post, onDelete, onPatch }: PostCardProps) {
 
         {commentsOpen && (
           <div className="mt-3">
-            <CommentSection postId={post.id} onCountChange={(count) => onPatch?.(post.id, { commentCount: count })} />
+            <CommentSection
+              postId={post.id}
+              focusCommentId={initialCommentId}
+              onCountChange={(count) => onPatch?.(post.id, { commentCount: count })}
+            />
           </div>
         )}
       </CardContent>

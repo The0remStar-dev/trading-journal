@@ -50,14 +50,19 @@ export default function DashboardPage() {
       )}
 
       {hasNoTradesAtAll ? (
-        <div className="rounded-lg border border-border bg-surface">
-          <EmptyState
-            icon={NotebookText}
-            title="Pas encore de trades"
-            description="Ajoute ton premier trade pour commencer à voir tes performances."
-            className="py-16"
-          />
-        </div>
+        <>
+          <div className="rounded-lg border border-border bg-surface">
+            <EmptyState
+              icon={NotebookText}
+              title="Pas encore de trades"
+              description="Ajoute ton premier trade pour commencer à voir tes performances."
+              className="py-16"
+            />
+          </div>
+          <div className="mt-4 max-w-2xl">
+            <CommunityPreview />
+          </div>
+        </>
       ) : (
         <>
           {headerAnalytics.data && (
@@ -86,11 +91,7 @@ export default function DashboardPage() {
                 }}
               />
             </div>
-            {headerAnalytics.data ? (
-              <InsightCard patterns={headerAnalytics.data.patterns} />
-            ) : (
-              <Skeleton className="h-full min-h-[200px]" />
-            )}
+            <CommunityPreview />
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -110,7 +111,11 @@ export default function DashboardPage() {
 
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
             <ProgressionLevelCard trades={trades} global={headerAnalytics.data?.global ?? null} />
-            <CommunityPreview />
+            {headerAnalytics.data ? (
+              <InsightCard patterns={headerAnalytics.data.patterns} />
+            ) : (
+              <Skeleton className="h-full min-h-[200px]" />
+            )}
             <DailyChecklist trades={trades} />
           </div>
         </>

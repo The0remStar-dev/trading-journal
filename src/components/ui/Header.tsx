@@ -1,7 +1,9 @@
 "use client";
 
 import { Search, Bell, MessageSquare } from "lucide-react";
+import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
+import { NotificationBadge } from "@/components/community/NotificationBadge";
 
 interface HeaderProps {
   username?: string;
@@ -22,9 +24,14 @@ export function Header({ username, avatarUrl }: HeaderProps) {
         <button className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-secondary hover:text-foreground">
           <MessageSquare className="h-4 w-4" />
         </button>
-        <button className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-secondary hover:text-foreground">
+        <Link
+          href="/feed#notifications"
+          aria-label="Voir les notifications"
+          className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-secondary hover:text-foreground"
+        >
           <Bell className="h-4 w-4" />
-        </button>
+          <NotificationBadge />
+        </Link>
         <Avatar src={avatarUrl} alt={username} size="sm" />
       </div>
     </div>

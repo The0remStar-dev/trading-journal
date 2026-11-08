@@ -26,7 +26,11 @@ export function ProfileHeader({ profile, postCount, onFollowChanged }: ProfileHe
   async function toggleFollow() {
     setBusy(true);
     try {
-      const res = await fetch(`/api/users/${encodeURIComponent(profile.username)}/follow`, { method: "POST" });
+      const res = await fetch(`/api/users/${encodeURIComponent(profile.username)}/follow`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isFollowing: !profile.isFollowing }),
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Action impossible.");
       onFollowChanged();

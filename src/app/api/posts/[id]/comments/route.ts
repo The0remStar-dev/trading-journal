@@ -73,9 +73,26 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Commentaire trop long (2000 caractères max)." }, { status: 400 });
   }
 
-  const created = await prisma.comment.create({
-    data: { postId: id, userId: user.id, body: body.body.trim() },
-    include: { profile: true },
+  const created = await prisma.$transaction(async (tx) => {
+    const comment = await tx.comment.create({
+      data: { postId: id, userId: user.id, body: body.body.trim() },
+      include: { profile: true },
+    });
+
+    if (post.userId !== user.id) {
+      await tx.notification.create({
+        data: {
+          recipientId: post.userId,
+          actorId: user.id,
+          type: "COMMENT",
+          dedupeKey: `comment:${comment.id}`,
+          postId: id,
+          commentId: comment.id,
+        },
+      });
+    }
+
+    return comment;
   });
 
   const comment: Comment = {
