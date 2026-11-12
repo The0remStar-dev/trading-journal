@@ -83,7 +83,9 @@ export function ProfileSuggestions({ compact = false, limit = 5 }: { compact?: b
                   {profile.username}
                 </Link>
                 <p className="truncate text-[10px] text-muted">
-                  {profile.tradingStyle ? TRADING_STYLE_LABELS[profile.tradingStyle] : profile.bio || EXPERIENCE_LEVEL_LABELS[profile.experienceLevel]}
+                  {profile.tradingStyle
+                    ? TRADING_STYLE_LABELS[profile.tradingStyle]
+                    : profile.bio || (profile.experienceLevel ? EXPERIENCE_LEVEL_LABELS[profile.experienceLevel] : "Profil public")}
                 </p>
               </div>
               <Button

@@ -5,11 +5,13 @@ import { Menu } from "lucide-react";
 import { Sidebar, useSidebarCollapse } from "@/components/layout/Sidebar";
 import { Header } from "@/components/ui/Header";
 import { BottomNav } from "@/components/ui/BottomNav";
+import { useUnreadCount } from "@/lib/useUnreadCount";
 import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { collapsed, toggle } = useSidebarCollapse();
+  const { count: unreadCount } = useUnreadCount();
 
   return (
     <div className="min-h-screen bg-background">
@@ -18,6 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onMobileClose={() => setMobileOpen(false)}
         collapsed={collapsed}
         onToggleCollapse={toggle}
+        unreadCount={unreadCount}
       />
 
       <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-surface px-4 lg:hidden">

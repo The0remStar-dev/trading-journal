@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Heart, MessageCircle, Bookmark, User, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,62 +8,54 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DirectionBadge } from "@/components/trades/StatusBadge";
 import { CommentSection } from "@/components/community/CommentSection";
-import { ReportPostButton } from "@/components/community/ReportpostButton";
+import { ReportPostButton } from "@/components/community/ReportPostButton";
 import { EMOTION_LABELS } from "@/types/trade";
 import { POST_TYPE_LABELS } from "@/types/post";
 import { EXPERIENCE_LEVEL_LABELS } from "@/types/profile";
+import { timeAgo } from "@/lib/timeAgo";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/lib/useToast";
 import type { Post } from "@/types/post";
-
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return "à l'instant";
-  if (minutes < 60) return `il y a ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `il y a ${hours} h`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `il y a ${days} j`;
-  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
-}
 
 interface PostCardProps {
   post: Post;
   onDelete?: (postId: string) => void;
   onPatch?: (postId: string, patch: Partial<Post>) => void;
+  /** Ouvre directement les commentaires (arrivée depuis une notification). */
+  defaultCommentsOpen?: boolean;
+  /** Commentaire à faire défiler et mettre en évidence. */
+  highlightCommentId?: string | null;
+  /** Alias utilisé par la liste communautaire pour ouvrir un commentaire ciblé. */
   initialCommentId?: string | null;
 }
 
-export function PostCard({ post, onDelete, onPatch, initialCommentId }: PostCardProps) {
-  const [commentsOpen, setCommentsOpen] = useState(Boolean(initialCommentId));
+export function PostCard({
+  post,
+  onDelete,
+  onPatch,
+  defaultCommentsOpen = false,
+  highlightCommentId = null,
+  initialCommentId = null,
+}: PostCardProps) {
+  const effectiveHighlightCommentId = highlightCommentId ?? initialCommentId;
+  const [commentsOpen, setCommentsOpen] = useState(defaultCommentsOpen || initialCommentId !== null);
   const [followBusy, setFollowBusy] = useState(false);
   const [likeBusy, setLikeBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (initialCommentId) setCommentsOpen(true);
-  }, [initialCommentId]);
 
   async function toggleLike() {
     if (likeBusy) return;
     setLikeBusy(true);
     try {
+      // État souhaité explicite : un double clic ne peut pas annuler le like par erreur.
       const res = await fetch(`/api/posts/${post.id}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ liked: !post.isLikedByViewer }),
+        body: JSON.stringify({ like: !post.isLikedByViewer }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Impossible de modifier le like.");
-      onPatch?.(post.id, { isLikedByViewer: data.liked, likeCount: data.likeCount });
-    } catch (error) {
-      toast({
-        title: "Action impossible",
-        description: error instanceof Error ? error.message : "Erreur inconnue.",
-        variant: "error",
-      });
+      if (res.ok) {
+        const data = await res.json();
+        onPatch?.(post.id, { isLikedByViewer: data.liked, likeCount: data.likeCount });
+      }
     } finally {
       setLikeBusy(false);
     }
@@ -84,17 +76,12 @@ export function PostCard({ post, onDelete, onPatch, initialCommentId }: PostCard
       const res = await fetch(`/api/users/${encodeURIComponent(post.author.username)}/follow`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isFollowing: !post.isFollowingAuthor }),
+        body: JSON.stringify({ follow: !post.isFollowingAuthor }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Impossible de modifier le suivi.");
-      onPatch?.(post.id, { isFollowingAuthor: data.isFollowing });
-    } catch (error) {
-      toast({
-        title: "Action impossible",
-        description: error instanceof Error ? error.message : "Erreur inconnue.",
-        variant: "error",
-      });
+      if (res.ok) {
+        const data = await res.json();
+        onPatch?.(post.id, { isFollowingAuthor: data.isFollowing });
+      }
     } finally {
       setFollowBusy(false);
     }
@@ -208,12 +195,7 @@ export function PostCard({ post, onDelete, onPatch, initialCommentId }: PostCard
         )}
 
         <div className="mt-4 flex items-center gap-4 border-t border-border pt-3">
-          <button
-            onClick={toggleLike}
-            disabled={likeBusy}
-            aria-pressed={post.isLikedByViewer}
-            className="flex items-center gap-1.5 text-sm text-muted hover:text-loss disabled:opacity-60"
-          >
+          <button onClick={toggleLike} disabled={likeBusy} className="flex items-center gap-1.5 text-sm text-muted hover:text-loss">
             <Heart className={cn("h-4 w-4", post.isLikedByViewer && "fill-loss text-loss")} />
             {post.likeCount}
           </button>
@@ -234,7 +216,7 @@ export function PostCard({ post, onDelete, onPatch, initialCommentId }: PostCard
           <div className="mt-3">
             <CommentSection
               postId={post.id}
-              focusCommentId={initialCommentId}
+              highlightCommentId={effectiveHighlightCommentId}
               onCountChange={(count) => onPatch?.(post.id, { commentCount: count })}
             />
           </div>

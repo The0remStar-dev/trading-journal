@@ -122,10 +122,16 @@ enum ReportStatus {
   ACTIONED
 }
 
-enum NotificationType {
-  LIKE
-  COMMENT
-  FOLLOW
+enum ChallengeRuleType {
+  DAILY_LOG_STREAK
+  TOTAL_TRADES
+  RISK_RESPECTED_STREAK
+}
+
+enum UserChallengeStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
 }
 
 enum TradingStyle {
@@ -134,6 +140,12 @@ enum TradingStyle {
   SWING_TRADER
   POSITION_TRADER
   OTHER
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  FOLLOW
 }
 
 model Profile {
@@ -150,10 +162,8 @@ model Profile {
   riskPerTradePercent Float @default(1)
   language Language @default(FR)
 
-  // Si true, seuls les followers (et le propriétaire) voient le contenu.
   isPrivate Boolean @default(false)
 
-  // Granularité de partage, appliquée côté serveur uniquement.
   showPerformance Boolean @default(true)
   showStats       Boolean @default(true)
   showTrades      Boolean @default(false)
@@ -166,16 +176,19 @@ model Profile {
   reports   Report[]  @relation("Reporter")
   following Follow[]  @relation("Following")
   followers Follow[]  @relation("Followers")
-  sentNotifications     Notification[] @relation("NotificationActor")
+
+  userChallenges UserChallenge[]
+  userBadges     UserBadge[]
+  streak         Streak?
+
   receivedNotifications Notification[] @relation("NotificationRecipient")
+  sentNotifications     Notification[] @relation("NotificationActor")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([username])
 }
-
-
 
 model Post {
   id String @id @default(uuid())
@@ -186,8 +199,6 @@ model Post {
   type  PostType @default(TRADE)
   title String
 
-  // Contenu structuré (format historique "trade retrospective") — optionnel
-  // pour laisser place au champ `body` générique utilisé par SETUP/WEEKLY_REVIEW.
   mistakeSummary String?
   lessonLearned  String?
   body           String?
@@ -197,8 +208,6 @@ model Post {
   beforeImageUrl String?
   afterImageUrl  String?
 
-  // Snapshot dénormalisé du trade lié — JAMAIS pnl/fees/positionSize, pour
-  // garantir qu'un trade privé ne devienne jamais public via un post.
   linkedTradeId String?
   symbol        String?
   direction     Direction?
@@ -206,14 +215,12 @@ model Post {
   exitPrice     Float?
   rMultiple     Float?
 
-  // Préparé pour une modération future (masquage sans suppression) —
-  // aucune route n'écrit ce champ pour l'instant.
   deletedAt DateTime?
 
-  comments Comment[]
-  likes    Like[]
-  saves    Save[]
-  reports  Report[]
+  comments      Comment[]
+  likes         Like[]
+  saves         Save[]
+  reports       Report[]
   notifications Notification[]
 
   createdAt DateTime @default(now())
@@ -235,12 +242,13 @@ model Comment {
 
   body String
 
+  notifications Notification[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([postId])
   @@index([userId])
-  notifications Notification[]
 }
 
 model Like {
@@ -291,26 +299,6 @@ model Follow {
   @@index([followingId])
 }
 
-model Notification {
-  id          String           @id @default(uuid())
-  recipientId String
-  actorId     String
-  type        NotificationType
-  postId      String?
-  commentId   String?
-  dedupeKey   String           @unique
-  isRead      Boolean          @default(false)
-  readAt      DateTime?
-  createdAt   DateTime         @default(now())
-  actor       Profile          @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
-  comment     Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  post        Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
-  recipient   Profile          @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-
-  @@index([recipientId, createdAt])
-  @@index([recipientId, isRead])
-}
-
 model Report {
   id String @id @default(uuid())
 
@@ -327,4 +315,119 @@ model Report {
 
   @@index([postId])
   @@index([reporterId])
+}
+
+model Challenge {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  title       String
+  description String
+  ruleType    ChallengeRuleType
+  targetValue Int
+  windowDays  Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  userChallenges UserChallenge[]
+  badge          Badge?
+}
+
+model UserChallenge {
+  id          String   @id @default(uuid())
+  userId      String
+  profile     Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  status       UserChallengeStatus @default(ACTIVE)
+  currentValue Int      @default(0)
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+  updatedAt    DateTime @updatedAt
+
+  progressEntries ChallengeProgress[]
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+}
+
+model ChallengeProgress {
+  id              String   @id @default(uuid())
+  userChallengeId String
+  userChallenge   UserChallenge @relation(fields: [userChallengeId], references: [id], onDelete: Cascade)
+  date            DateTime
+  achieved        Boolean
+
+  @@unique([userChallengeId, date])
+  @@index([userChallengeId])
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  title       String
+  description String
+  icon        String
+  ruleType    ChallengeRuleType
+  targetValue Int
+  windowDays  Int?
+
+  challengeId String?    @unique
+  challenge   Challenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+
+  userBadges UserBadge[]
+  createdAt  DateTime @default(now())
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  profile   Profile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  awardedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+}
+
+model Streak {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  profile        Profile   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastActiveDate DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
+// Notification d'événement communautaire. Ne stocke que des RÉFÉRENCES : le
+// texte est construit à l'affichage, donc pseudo et avatar restent à jour.
+model Notification {
+  id String @id @default(uuid())
+
+  recipientId String
+  recipient   Profile @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  actorId String
+  actor   Profile @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  type NotificationType
+
+  // Supprimer le post ou le commentaire supprime aussi la notification.
+  postId String?
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  commentId String?
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  // Clé d'idempotence : un événement = au plus une notification.
+  dedupeKey String @unique
+
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([recipientId, createdAt])
+  @@index([recipientId, isRead])
 }

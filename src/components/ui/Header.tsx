@@ -11,6 +11,8 @@ interface HeaderProps {
 }
 
 export function Header({ username, avatarUrl }: HeaderProps) {
+  const displayName = username ?? "Profil utilisateur";
+
   return (
     <div className="sticky top-0 z-30 hidden h-16 items-center justify-between border-b border-border bg-surface px-6 lg:flex">
       <div className="relative w-full max-w-sm">
@@ -32,7 +34,7 @@ export function Header({ username, avatarUrl }: HeaderProps) {
           <Bell className="h-4 w-4" />
           <NotificationBadge />
         </Link>
-        <Avatar src={avatarUrl} alt={username} size="sm" />
+        <Avatar src={avatarUrl ?? null} alt={displayName} size="sm" />
       </div>
     </div>
   );

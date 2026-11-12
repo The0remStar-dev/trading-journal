@@ -1,39 +1,50 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
+  Bell,
   NotebookText,
   BarChart3,
   CalendarClock,
+  Trophy,
+  UserCircle,
   Settings,
   Calculator,
   StickyNote,
   LogOut,
+  Sparkles,
   X,
   ChevronsLeft,
   ChevronsRight,
-  UserCircle,
 } from "lucide-react";
+import { formatBadgeCount } from "@/lib/notifications/helpers";
 import { cn } from "@/lib/utils";
-import { NotificationBadge } from "@/components/community/NotificationBadge";
 
-// Navigation principale : reprend les onglets déjà existants dans l'app.
-const MAIN_NAV_ITEMS = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  /** Affiche le badge de notifications non lues. */
+  showBadge?: boolean;
+}
+
+const MAIN_NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Accueil", icon: LayoutDashboard },
   { href: "/feed", label: "Communauté", icon: Users },
+  { href: "/feed?panel=notifications", label: "Notifications", icon: Bell, showBadge: true },
   { href: "/trades", label: "Journal", icon: NotebookText },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/challenges", label: "Challenges", icon: Trophy },
   { href: "/monthly", label: "Rétrospective Mensuelle", icon: CalendarClock },
   { href: "/profile", label: "Mon profil", icon: UserCircle },
   { href: "/settings", label: "Paramètres", icon: Settings },
 ];
 
-const TOOLS_NAV_ITEMS = [
+const TOOLS_NAV_ITEMS: NavItem[] = [
   { href: "/tools/risk-calculator", label: "Calculateur de risque", icon: Calculator },
   { href: "/tools/notes", label: "Notes", icon: StickyNote },
 ];
@@ -45,11 +56,19 @@ interface SidebarProps {
   onMobileClose?: () => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  unreadCount: number;
 }
 
-export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggleCollapse }: SidebarProps) {
+export function Sidebar({
+  mobileOpen = false,
+  onMobileClose,
+  collapsed,
+  onToggleCollapse,
+  unreadCount,
+}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const badgeLabel = formatBadgeCount(unreadCount);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -57,17 +76,51 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
     router.refresh();
   }
 
-  function isActive(href: string) {
-    return href === "/dashboard" ? pathname.startsWith("/dashboard") : pathname.startsWith(href);
+  function isActive(item: NavItem) {
+    // L'entrée « Notifications » est une action : la page Communauté reste l'élément actif.
+    if (item.href.includes("?")) return false;
+    return item.href === "/dashboard" ? pathname.startsWith("/dashboard") : pathname.startsWith(item.href);
+  }
+
+  function renderItem(item: NavItem) {
+    const active = isActive(item);
+    const showBadge = item.showBadge && badgeLabel;
+
+    return (
+      <li key={item.href}>
+        <Link
+          href={item.href}
+          onClick={onMobileClose}
+          title={collapsed ? item.label : undefined}
+          className={cn(
+            "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            collapsed && "lg:justify-center lg:px-0",
+            active ? "bg-win-dim text-win" : "text-muted hover:bg-background hover:text-foreground"
+          )}
+        >
+          {active && <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-win" />}
+          <item.icon className="h-4 w-4 shrink-0" />
+          <span className={cn(collapsed && "lg:hidden")}>{item.label}</span>
+          {showBadge && (
+            <span
+              className={cn(
+                "ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white",
+                collapsed && "lg:absolute lg:right-1 lg:top-0.5 lg:ml-0"
+              )}
+              aria-label={`${unreadCount} notification${unreadCount > 1 ? "s" : ""} non lue${unreadCount > 1 ? "s" : ""}`}
+            >
+              {badgeLabel}
+            </span>
+          )}
+        </Link>
+      </li>
+    );
   }
 
   return (
     <>
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
-          onClick={onMobileClose}
-        />
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden" onClick={onMobileClose} />
       )}
 
       <aside
@@ -78,39 +131,23 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
           collapsed ? "w-64 lg:w-[72px]" : "w-64"
         )}
       >
-        {/* En-tête : branding + bouton de rétractation (desktop uniquement) */}
         <div
           className={cn(
             "flex items-center border-b border-border px-5 py-5",
             collapsed ? "lg:justify-center lg:px-0" : "justify-between"
           )}
         >
-          <Link
-            href="/dashboard"
-            onClick={onMobileClose}
-            aria-label="TradeShare — Accueil"
-            title={collapsed ? "TradeShare" : undefined}
-            className={cn(
-              "flex shrink-0 items-center",
-              collapsed && "lg:h-10 lg:w-10 lg:justify-center"
-            )}
-          >
-            <Image
-              src="/tradeshare-logo.png"
-              alt="TradeShare"
-              width={2168}
-              height={401}
-              priority
-              className={cn("h-auto w-[200px] rounded-sm", collapsed && "lg:hidden")}
-            />
-            <Image
-              src="/favicon.png"
-              alt=""
-              width={401}
-              height={401}
-              className={cn("hidden h-10 w-10 rounded-sm", collapsed && "lg:block")}
-            />
-          </Link>
+          <div className={cn("flex flex-col", collapsed && "lg:hidden")}>
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-win shadow-glow" />
+              <span className="text-base font-semibold tracking-wide text-foreground">
+                TRADE<span className="text-win">SHARE</span>
+              </span>
+            </div>
+            <span className="mt-0.5 text-[11px] text-muted">Progress. Together.</span>
+          </div>
+
+          <span className={cn("hidden h-2 w-2 rounded-full bg-win shadow-glow", collapsed && "lg:block")} />
 
           <button
             onClick={onMobileClose}
@@ -130,34 +167,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
         </button>
 
         <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
-          <ul className="flex flex-col gap-1">
-            {MAIN_NAV_ITEMS.map((item) => {
-              const active = isActive(item.href);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={onMobileClose}
-                    title={collapsed ? item.label : undefined}
-                    className={cn(
-                      "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                      collapsed && "lg:justify-center lg:px-0",
-                      active
-                        ? "bg-secondary text-foreground"
-                        : "text-muted hover:bg-background hover:text-foreground"
-                    )}
-                  >
-                    {active && (
-                      <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-accent" />
-                    )}
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    <span className={cn(collapsed && "lg:hidden")}>{item.label}</span>
-                    {item.href === "/feed" && <NotificationBadge compact className="lg:hidden" />}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          <ul className="flex flex-col gap-1">{MAIN_NAV_ITEMS.map(renderItem)}</ul>
 
           <div className="mt-6">
             <p
@@ -168,54 +178,36 @@ export function Sidebar({ mobileOpen = false, onMobileClose, collapsed, onToggle
             >
               Mes Outils
             </p>
-            <ul className="mt-2 flex flex-col gap-1">
-              {TOOLS_NAV_ITEMS.map((item) => {
-                const active = isActive(item.href);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={onMobileClose}
-                      title={collapsed ? item.label : undefined}
-                      className={cn(
-                        "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                        collapsed && "lg:justify-center lg:px-0",
-                        active
-                          ? "bg-secondary text-foreground"
-                          : "text-muted hover:bg-background hover:text-foreground"
-                      )}
-                    >
-                      {active && (
-                        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-accent" />
-                      )}
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className={cn(collapsed && "lg:hidden")}>{item.label}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <ul className="mt-2 flex flex-col gap-1">{TOOLS_NAV_ITEMS.map(renderItem)}</ul>
           </div>
         </nav>
 
         <div className="flex flex-col gap-3 border-t border-border p-4">
-          <Link
-            href="/monthly"
-            onClick={onMobileClose}
+          <div
             className={cn(
-              "rounded-md border border-border bg-secondary p-3 transition-colors hover:border-accent/40",
+              "relative overflow-hidden rounded-lg border border-win/20 bg-gradient-to-br from-win/10 via-surface to-accent-cyan/10 p-4",
               collapsed && "lg:hidden"
             )}
           >
-            <p className="text-xs font-semibold text-foreground">Ma progression</p>
-            <p className="mt-1 text-xs text-muted">Voir ma rétrospective mensuelle</p>
-          </Link>
+            <Sparkles className="h-4 w-4 text-win" />
+            <p className="mt-2 text-sm font-medium text-foreground">Un meilleur trader chaque jour.</p>
+            <p className="mt-0.5 text-xs text-muted">
+              Votre discipline d&apos;aujourd&apos;hui construit votre edge de demain.
+            </p>
+            <Link
+              href="/monthly"
+              onClick={onMobileClose}
+              className="mt-3 inline-block text-xs font-medium text-win hover:underline"
+            >
+              Voir ma progression →
+            </Link>
+          </div>
 
           <button
             onClick={handleLogout}
             title={collapsed ? "Se déconnecter" : undefined}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-background hover:text-danger",
+              "flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-background hover:text-loss",
               collapsed && "lg:justify-center lg:px-0"
             )}
           >

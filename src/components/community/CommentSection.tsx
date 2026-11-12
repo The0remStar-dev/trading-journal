@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Send, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/lib/useToast";
+import { cn } from "@/lib/utils";
 import type { Comment } from "@/types/community";
 
 function timeAgo(iso: string): string {
@@ -16,16 +16,13 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)} j`;
 }
 
-export function CommentSection({
-  postId,
-  focusCommentId,
-  onCountChange,
-}: {
+interface CommentSectionProps {
   postId: string;
-  focusCommentId?: string | null;
   onCountChange: (count: number) => void;
-}) {
-  const { toast } = useToast();
+  highlightCommentId?: string | null;
+}
+
+export function CommentSection({ postId, onCountChange, highlightCommentId = null }: CommentSectionProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
@@ -38,11 +35,13 @@ export function CommentSection({
       .finally(() => setLoading(false));
   }, [postId]);
 
+  // Arrivée depuis une notification de commentaire : on amène le commentaire à l'écran.
   useEffect(() => {
-    if (!loading && focusCommentId) {
-      document.getElementById(`comment-${focusCommentId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [comments, focusCommentId, loading]);
+    if (loading || !highlightCommentId) return;
+    document
+      .getElementById(`comment-${highlightCommentId}`)
+      ?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [loading, highlightCommentId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,19 +61,15 @@ export function CommentSection({
         return next;
       });
       setInput("");
-    } catch (error) {
-      toast({
-        title: "Envoi impossible",
-        description: error instanceof Error ? error.message : "Erreur inconnue.",
-        variant: "error",
-      });
+    } catch {
+      // silencieux côté UI, le bouton reste actionnable pour réessayer
     } finally {
       setSubmitting(false);
     }
   }
 
   async function handleDelete(commentId: string) {
-    const res = await fetch(`/api/posts/${postId}/comments/${commentId}`, { method: "DELETE" });
+    const res = await fetch(`/api/comments/${commentId}`, { method: "DELETE" });
     if (res.ok) {
       setComments((prev) => {
         const next = prev.filter((c) => c.id !== commentId);
@@ -94,7 +89,7 @@ export function CommentSection({
       ) : (
         <div className="flex max-h-64 flex-col gap-3 overflow-y-auto">
           {comments.map((c) => (
-            <div key={c.id} id={`comment-${c.id}`} className="flex items-start gap-2 scroll-mt-20">
+            <div key={c.id} id={`comment-${c.id}`} className="flex items-start gap-2">
               <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-secondary">
                 {c.author.avatarUrl ? (
                   <img src={c.author.avatarUrl} alt={c.author.username} className="h-full w-full object-cover" />
@@ -102,7 +97,12 @@ export function CommentSection({
                   <User className="h-3.5 w-3.5 text-muted" />
                 )}
               </div>
-              <div className="flex-1 rounded-md bg-secondary px-3 py-1.5">
+              <div
+                className={cn(
+                  "flex-1 rounded-md bg-secondary px-3 py-1.5",
+                  c.id === highlightCommentId && "ring-1 ring-accent"
+                )}
+              >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-medium text-foreground">{c.author.username}</span>
                   <div className="flex items-center gap-2">

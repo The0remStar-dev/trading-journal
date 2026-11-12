@@ -11,7 +11,7 @@ import { PrivacyTab } from "@/components/settings/PrivacyTab";
 import { SecurityTab } from "@/components/settings/SecurityTab";
 import { TradingCapitalTab } from "@/components/settings/TradingCapitalTab";
 import { PreferencesTab } from "@/components/settings/PreferencesTab";
-import { useProfile } from "@/lib/useprofile";
+import { useProfile } from "@/lib/useProfile";
 import { useToast } from "@/lib/useToast";
 import { createClient } from "@/lib/supabase/client";
 import type { ProfileInput } from "@/types/profile";

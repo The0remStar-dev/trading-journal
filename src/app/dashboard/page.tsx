@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, NotebookText } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { WelcomeHeader } from "@/components/dashboard/WelcomeHeader";
 import { PerformanceStats } from "@/components/dashboard/PerformanceStats";
@@ -10,15 +10,14 @@ import { InsightCard } from "@/components/dashboard/InsightCard";
 import { EdgeCard } from "@/components/dashboard/EdgeCard";
 import { RecentTradesTable } from "@/components/dashboard/RecentTradesTable";
 import { ProgressionLevelCard } from "@/components/dashboard/ProgressionLevelCard";
-import { CommunityPreview } from "@/components/dashboard/CommunityPreview";
+import { CommunityCard } from "@/components/dashboard/CommunityCard";
 import { DailyChecklist } from "@/components/dashboard/DailyChecklist";
 import { InsufficientDataBanner } from "@/components/dashboard/InsufficientDataBanner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useAnalytics } from "@/lib/useAnalytics";
 import { useTrades } from "@/lib/useTrades";
-import { useProfile } from "@/lib/useprofile";
-import { NotebookText } from "lucide-react";
+import { useProfile } from "@/lib/useProfile";
 import type { PeriodPreset } from "@/types/analytics";
 
 export default function DashboardPage() {
@@ -50,19 +49,14 @@ export default function DashboardPage() {
       )}
 
       {hasNoTradesAtAll ? (
-        <>
-          <div className="rounded-lg border border-border bg-surface">
-            <EmptyState
-              icon={NotebookText}
-              title="Pas encore de trades"
-              description="Ajoute ton premier trade pour commencer à voir tes performances."
-              className="py-16"
-            />
-          </div>
-          <div className="mt-4 max-w-2xl">
-            <CommunityPreview />
-          </div>
-        </>
+        <div className="rounded-lg border border-border bg-surface">
+          <EmptyState
+            icon={NotebookText}
+            title="Pas encore de trades"
+            description="Ajoute ton premier trade pour commencer à voir tes performances."
+            className="py-16"
+          />
+        </div>
       ) : (
         <>
           {headerAnalytics.data && (
@@ -78,7 +72,17 @@ export default function DashboardPage() {
           ) : (
             <PerformanceStats global={headerAnalytics.data.global} />
           )}
+        </>
+      )}
 
+      {/* Communauté : désormais avant « Point d'attention » dans l'ordre de lecture.
+          Visible même sans trade : elle ne dépend pas du journal. */}
+      <div className="mt-4">
+        <CommunityCard />
+      </div>
+
+      {!hasNoTradesAtAll && (
+        <>
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <ProgressionCard
@@ -91,7 +95,11 @@ export default function DashboardPage() {
                 }}
               />
             </div>
-            <CommunityPreview />
+            {headerAnalytics.data ? (
+              <InsightCard patterns={headerAnalytics.data.patterns} />
+            ) : (
+              <Skeleton className="h-full min-h-[200px]" />
+            )}
           </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -109,13 +117,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <ProgressionLevelCard trades={trades} global={headerAnalytics.data?.global ?? null} />
-            {headerAnalytics.data ? (
-              <InsightCard patterns={headerAnalytics.data.patterns} />
-            ) : (
-              <Skeleton className="h-full min-h-[200px]" />
-            )}
             <DailyChecklist trades={trades} />
           </div>
         </>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { getFollowingIds, buildVisiblePostsWhere } from "@/lib/community/visibility";
-import { ensureProfile } from "@/lib/profile";
+import { commentDedupeKey } from "@/lib/notifications/helpers";
 import type { Comment, CommentInput } from "@/types/community";
 
 interface Params {
@@ -46,7 +46,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   return NextResponse.json({ comments: serialized });
 }
 
-// POST /api/posts/:id/comments
+// POST /api/posts/:id/comments : commentaire + notification dans la même transaction.
 export async function POST(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const supabase = await createClient();
@@ -56,8 +56,6 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
-  await ensureProfile(user.id, user.email);
-
   const followingIds = await getFollowingIds(user.id);
   const visibility = buildVisiblePostsWhere(user.id, followingIds);
   const post = await prisma.post.findFirst({ where: { id, ...visibility } });
@@ -65,45 +63,50 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Publication introuvable." }, { status: 404 });
   }
 
-  const body = (await request.json()) as CommentInput;
-  if (!body.body || !body.body.trim()) {
+  const body = (await request.json().catch(() => null)) as CommentInput | null;
+  if (!body || typeof body.body !== "string" || !body.body.trim()) {
     return NextResponse.json({ error: "Le commentaire ne peut pas être vide." }, { status: 400 });
   }
   if (body.body.length > 2000) {
     return NextResponse.json({ error: "Commentaire trop long (2000 caractères max)." }, { status: 400 });
   }
 
-  const created = await prisma.$transaction(async (tx) => {
-    const comment = await tx.comment.create({
-      data: { postId: id, userId: user.id, body: body.body.trim() },
-      include: { profile: true },
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      const comment = await tx.comment.create({
+        data: { postId: id, userId: user.id, body: body.body.trim() },
+        include: { profile: true },
+      });
+
+      // Jamais de notification quand on commente sa propre publication.
+      if (post.userId !== user.id) {
+        await tx.notification.create({
+          data: {
+            recipientId: post.userId,
+            actorId: user.id,
+            type: "COMMENT",
+            postId: id,
+            commentId: comment.id,
+            dedupeKey: commentDedupeKey(comment.id),
+          },
+        });
+      }
+      return comment;
     });
 
-    if (post.userId !== user.id) {
-      await tx.notification.create({
-        data: {
-          recipientId: post.userId,
-          actorId: user.id,
-          type: "COMMENT",
-          dedupeKey: `comment:${comment.id}`,
-          postId: id,
-          commentId: comment.id,
-        },
-      });
-    }
+    const comment: Comment = {
+      id: created.id,
+      postId: created.postId,
+      author: { username: created.profile.username, avatarUrl: created.profile.avatarUrl },
+      body: created.body,
+      isOwnComment: true,
+      canDelete: true,
+      createdAt: created.createdAt.toISOString(),
+    };
 
-    return comment;
-  });
-
-  const comment: Comment = {
-    id: created.id,
-    postId: created.postId,
-    author: { username: created.profile.username, avatarUrl: created.profile.avatarUrl },
-    body: created.body,
-    isOwnComment: true,
-    canDelete: true,
-    createdAt: created.createdAt.toISOString(),
-  };
-
-  return NextResponse.json({ comment }, { status: 201 });
+    return NextResponse.json({ comment }, { status: 201 });
+  } catch (err) {
+    console.error("Erreur lors de la création du commentaire :", err);
+    return NextResponse.json({ error: "Impossible de publier le commentaire." }, { status: 500 });
+  }
 }
