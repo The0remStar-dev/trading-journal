@@ -35,7 +35,8 @@ export function useSuggestions(limit: number) {
 
   useEffect(() => {
     load();
-    return () => timers.current.forEach((t) => window.clearTimeout(t));
+    const pendingTimers = timers.current;
+    return () => pendingTimers.forEach((t) => window.clearTimeout(t));
   }, [load]);
 
   const follow = useCallback(
