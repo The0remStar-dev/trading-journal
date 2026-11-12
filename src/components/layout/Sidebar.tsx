@@ -150,7 +150,7 @@ export function Sidebar({
               width={2168}
               height={401}
               priority
-              className="h-auto w-[190px] max-w-full"
+              className="h-auto w-[300px] max-w-full"
             />
           </Link>
 
