@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -95,10 +96,10 @@ export function Sidebar({
           className={cn(
             "group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
             collapsed && "lg:justify-center lg:px-0",
-            active ? "bg-win-dim text-win" : "text-muted hover:bg-background hover:text-foreground"
+            active ? "bg-secondary text-primary" : "text-muted hover:bg-background hover:text-foreground"
           )}
         >
-          {active && <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-win" />}
+          {active && <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-primary" />}
           <item.icon className="h-4 w-4 shrink-0" />
           <span className={cn(collapsed && "lg:hidden")}>{item.label}</span>
           {showBadge && (
@@ -133,21 +134,41 @@ export function Sidebar({
       >
         <div
           className={cn(
-            "flex items-center border-b border-border px-5 py-5",
+            "flex items-center border-b border-border px-4 py-4",
             collapsed ? "lg:justify-center lg:px-0" : "justify-between"
           )}
         >
-          <div className={cn("flex flex-col", collapsed && "lg:hidden")}>
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-win shadow-glow" />
-              <span className="text-base font-semibold tracking-wide text-foreground">
-                TRADE<span className="text-win">SHARE</span>
-              </span>
-            </div>
-            <span className="mt-0.5 text-[11px] text-muted">Progress. Together.</span>
-          </div>
+          <Link
+            href="/dashboard"
+            onClick={onMobileClose}
+            aria-label="TradeShare — Accueil"
+            className={cn("min-w-0", collapsed && "lg:hidden")}
+          >
+            <Image
+              src="/tradeshare-logo.png"
+              alt=""
+              width={2168}
+              height={401}
+              priority
+              className="h-auto w-[190px] max-w-full"
+            />
+          </Link>
 
-          <span className={cn("hidden h-2 w-2 rounded-full bg-win shadow-glow", collapsed && "lg:block")} />
+          <Link
+            href="/dashboard"
+            onClick={onMobileClose}
+            title="TradeShare — Accueil"
+            aria-label="TradeShare — Accueil"
+            className={cn("hidden shrink-0", collapsed && "lg:block")}
+          >
+            <Image
+              src="/favicon.png"
+              alt=""
+              width={401}
+              height={401}
+              className="h-10 w-10"
+            />
+          </Link>
 
           <button
             onClick={onMobileClose}
@@ -185,11 +206,11 @@ export function Sidebar({
         <div className="flex flex-col gap-3 border-t border-border p-4">
           <div
             className={cn(
-              "relative overflow-hidden rounded-lg border border-win/20 bg-gradient-to-br from-win/10 via-surface to-accent-cyan/10 p-4",
+              "relative overflow-hidden rounded-lg border border-border bg-gradient-to-br from-secondary via-surface to-background p-4",
               collapsed && "lg:hidden"
             )}
           >
-            <Sparkles className="h-4 w-4 text-win" />
+            <Sparkles className="h-4 w-4 text-muted" />
             <p className="mt-2 text-sm font-medium text-foreground">Un meilleur trader chaque jour.</p>
             <p className="mt-0.5 text-xs text-muted">
               Votre discipline d&apos;aujourd&apos;hui construit votre edge de demain.
@@ -197,7 +218,7 @@ export function Sidebar({
             <Link
               href="/monthly"
               onClick={onMobileClose}
-              className="mt-3 inline-block text-xs font-medium text-win hover:underline"
+              className="mt-3 inline-block text-xs font-medium text-primary hover:text-foreground hover:underline"
             >
               Voir ma progression →
             </Link>
